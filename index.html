@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NDB Open Data - 都道府県別 算定回数マップ</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #f8fafc; --card: #fff; --border: #e2e8f0; --border-lt: #f1f5f9;
+  --text: #1e293b; --text-m: #475569; --text-l: #64748b; --text-ll: #94a3b8;
+  --pri: #0ea5e9; --pri-h: #0284c7; --pri-lt: #e0f2fe;
+  --shadow: 0 1px 3px rgba(0,0,0,.06); --shadow-lg: 0 4px 12px rgba(0,0,0,.07);
+  --rad: 10px; --side-w: 320px; --hdr-h: 56px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.5;overflow:hidden;height:100vh}
+
+/* Layout */
+#app{display:flex;flex-direction:column;height:100vh}
+header{height:var(--hdr-h);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;flex-shrink:0;box-shadow:var(--shadow);z-index:10}
+header h1{font-size:19px;font-weight:600} header h1 b{color:var(--pri)}
+header .sub{margin-left:14px;font-size:13px;color:var(--text-ll)}
+.content{display:flex;flex:1;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:var(--side-w);flex-shrink:0;background:var(--card);border-right:none;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;transition:width .25s ease,padding .25s ease,opacity .2s ease}
+.sidebar.collapsed{width:0 !important;min-width:0;padding:0;overflow:hidden;opacity:0}
+.sidebar-toggle{width:34px;height:34px;border:1px solid var(--border);border-radius:7px;background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text-l);transition:all .15s;margin-right:12px;flex-shrink:0;line-height:1}
+.sidebar-toggle:hover{background:var(--border-lt);color:var(--text-m);border-color:var(--border)}
+.sidebar-toggle.active{color:var(--pri);border-color:var(--pri);background:var(--pri-lt)}
+
+/* Resize handle */
+.resize-handle{width:6px;cursor:col-resize;flex-shrink:0;position:relative;z-index:5;background:transparent;transition:background .15s;border-left:1px solid var(--border)}
+.resize-handle:hover,.resize-handle.dragging{background:var(--pri-lt)}
+.resize-handle::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:28px;background:var(--border);border-radius:1px}
+.panel{background:var(--bg);border:1px solid var(--border-lt);border-radius:var(--rad);padding:12px}
+.panel h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-l);margin-bottom:8px}
+
+/* Hierarchical checkboxes */
+.code-actions{display:flex;gap:5px;margin-bottom:6px}
+.code-actions button{font-size:11px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text-l);cursor:pointer}
+.code-actions button:hover{background:var(--pri-lt);color:var(--pri);border-color:var(--pri)}
+.proc-list{max-height:50vh;overflow:auto}
+.class-group{margin-bottom:2px}
+.class-header{display:flex;align-items:center;gap:6px;padding:5px 4px;cursor:pointer;border-radius:5px;transition:background .1s}
+.class-header:hover{background:var(--border-lt)}
+.class-toggle{width:14px;font-size:11px;color:var(--text-ll);text-align:center;flex-shrink:0;user-select:none}
+.class-header input[type="checkbox"]{width:15px;height:15px;accent-color:var(--pri);cursor:pointer;flex-shrink:0}
+.class-code{font-size:12px;font-weight:700;color:var(--pri);min-width:48px}
+.class-name{font-size:12.5px;color:var(--text-m);white-space:nowrap}
+.class-children{display:none;padding-left:22px}
+.class-children.open{display:block}
+.proc-item{display:flex;align-items:center;gap:5px;padding:3px 4px;cursor:pointer;border-radius:4px}
+.proc-item:hover{background:var(--border-lt)}
+.proc-item input[type="checkbox"]{width:13px;height:13px;accent-color:var(--pri);cursor:pointer;flex-shrink:0}
+.proc-name{font-size:12px;color:var(--text-m);white-space:nowrap;flex:1}
+.proc-pts{font-size:11px;color:var(--text-ll);white-space:nowrap}
+
+/* Year */
+.year-disp{text-align:center;font-size:26px;font-weight:700;color:var(--text);margin-bottom:6px}
+.year-disp span{font-size:12px;font-weight:400;color:var(--text-ll)}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:5px;background:var(--border);border-radius:3px;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--pri);border-radius:50%;cursor:pointer;border:2px solid var(--card);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.year-ticks{display:flex;justify-content:space-between;margin-top:3px;font-size:9px;color:var(--text-ll)}
+.play-row{display:flex;align-items:center;gap:6px;margin-top:8px}
+.play-btn{flex:1;padding:6px 0;border:1px solid var(--pri);border-radius:6px;background:var(--pri-lt);color:var(--pri);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.play-btn:hover,.play-btn.active{background:var(--pri);color:#fff}
+.speed-sel{padding:6px 5px;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-m);background:var(--card);cursor:pointer}
+
+/* Map stats overlay */
+.map-stats{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.93);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--rad);padding:12px 16px;box-shadow:var(--shadow);z-index:5;pointer-events:none;font-variant-numeric:tabular-nums}
+.ms-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
+.ms-row{display:flex;gap:22px;align-items:flex-start}
+.ms-row-spread{display:flex;justify-content:space-between;gap:28px}
+.ms-cell{min-width:0}
+.ms-lbl{font-size:10px;color:var(--text-ll);white-space:nowrap}
+.ms-val{font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;line-height:1.3}
+.ms-val-lg{font-size:20px}
+.ms-unit{font-size:10.5px;font-weight:400;color:var(--text-ll);margin-left:2px}
+.ms-sub{font-size:9.5px;color:var(--text-ll);white-space:nowrap}
+.ms-div{border-top:1px solid var(--border-lt);margin:6px 0}
+
+/* Legend hover controls */
+.legend-ctrl{position:absolute;bottom:74px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:8px;padding:10px 14px;box-shadow:var(--shadow);z-index:6;opacity:0;pointer-events:none;transition:opacity .15s}
+.legend-ctrl.visible{opacity:1;pointer-events:auto}
+.lc-row{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+.lc-lbl{font-size:14px;color:var(--text-ll)}
+.lc-input{width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:15px;text-align:right;color:var(--text);background:var(--card)}
+.lc-input:focus{outline:none;border-color:var(--pri)}
+.lc-sep{color:var(--text-ll);font-size:15px}
+.lc-btn{font-size:14px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text-l);cursor:pointer;white-space:nowrap}
+.lc-btn:hover{background:var(--pri-lt);color:var(--pri);border-color:var(--pri)}
+.lc-badge{font-size:13px;padding:2px 6px;border-radius:3px}
+
+/* Download */
+.dl-btn{width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text-m);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.dl-btn:hover{background:var(--text);color:#fff;border-color:var(--text)}
+
+/* Map */
+.map-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:12px}
+#map-svg{width:100%;height:100%}
+.pref-path{stroke:#fff;stroke-width:.6;transition:fill .3s,stroke .1s,stroke-width .1s}
+.pref-path.hovered{stroke:var(--text);stroke-width:1.8;paint-order:fill}
+.inset-box{fill:var(--card);stroke:var(--border);stroke-width:1;rx:6}
+.inset-label{font-size:10px;fill:var(--text-ll);text-anchor:middle}
+.legend-title{font-size:15px;fill:var(--text-l)}
+.legend-axis text{font-size:14px;fill:var(--text-ll)}
+.legend-axis line,.legend-axis path{stroke:var(--text-ll);stroke-width:.5}
+
+/* Tooltip */
+.tooltip{position:absolute;pointer-events:none;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow-lg);opacity:0;transition:opacity .12s;z-index:100;min-width:180px;max-width:340px}
+.tooltip.visible{opacity:1}
+.tt-pref{font-size:14px;font-weight:700;margin-bottom:5px}
+.tt-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;padding:1.5px 0;gap:10px}
+.tt-lbl{color:var(--text-l);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.tt-val{font-weight:600;color:var(--text);text-align:right;white-space:nowrap}
+.tt-div{border-top:1px solid var(--border-lt);margin:4px 0}
+.tt-hi{font-weight:700;color:var(--pri)}
+.empty-st{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.empty-st-text{font-size:13px;color:var(--text-ll);background:var(--card);padding:10px 18px;border-radius:8px;border:1px dashed var(--border)}
+
+/* Loading */
+.loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;transition:opacity .3s}
+.loading.hidden{opacity:0;pointer-events:none}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--pri);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-text{margin-top:10px;color:var(--text-ll);font-size:12px;text-align:center}
+
+/* Scroll mode: stats flows above map when viewport is narrow */
+.map-area.scroll-mode{flex-direction:column;overflow-y:auto;align-items:stretch;justify-content:flex-start;padding:12px}
+.map-area.scroll-mode .map-stats{position:relative;top:auto !important;left:auto !important;order:-1;align-self:flex-start;margin-bottom:8px}
+.map-area.scroll-mode #map-svg{flex-shrink:0}
+
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading"><div><div class="spinner"></div><div class="load-text">データを読み込み中...</div></div></div>
+
+<div id="app">
+  <header>
+    <button class="sidebar-toggle active" id="sidebarToggle" onclick="toggleSidebar()" title="サイドバー切替">&#9776;</button>
+    <h1><b>NDB</b> Open Data</h1>
+    <div class="sub">v1.00 | 最終更新: 2026/02/13</div>
+  </header>
+  <div class="content">
+    <aside class="sidebar">
+      <div class="panel">
+        <h3>算定項目</h3>
+        <div class="code-actions">
+          <button onclick="toggleAll(true)">すべて選択</button>
+          <button onclick="toggleAll(false)">すべて解除</button>
+          <button onclick="expandAll(true)">展開</button>
+          <button onclick="expandAll(false)">折畳</button>
+        </div>
+        <div class="proc-list" id="procList"></div>
+      </div>
+      <div class="panel">
+        <h3>年度</h3>
+        <div class="year-disp" id="yearDisp">2023<span>年度</span></div>
+        <input type="range" id="yearSlider" min="2014" max="2023" value="2023" step="1">
+        <div class="year-ticks" id="yearTicks"></div>
+        <div class="play-row">
+          <button class="play-btn" id="playBtn" onclick="toggleAnim()">&#9654; 再生</button>
+          <select class="speed-sel" id="speedSel"><option value="1200">ゆっくり</option><option value="600" selected>通常</option><option value="300">速い</option></select>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>データ出力</h3>
+        <button class="dl-btn" onclick="downloadCSV()">CSV ダウンロード</button>
+      </div>
+      <div style="font-size:10px;color:var(--text-ll);line-height:1.5;padding:0 4px">
+        データ: 厚生労働省 NDB Open Data / 総務省人口推計<br>地図: 国土交通省 国土数値情報(N03)
+      </div>
+    </aside>
+    <div class="resize-handle" id="resizeHandle"></div>
+    <main class="map-area">
+      <svg id="map-svg"></svg>
+      <div class="map-stats" id="mapStats" style="display:none">
+        <div class="ms-title">統計情報</div>
+        <div class="ms-row-spread">
+          <div class="ms-cell"><div class="ms-lbl">全国合計</div><div><span class="ms-val ms-val-lg" id="sTotal">-</span><span class="ms-unit">回</span></div></div>
+          <div class="ms-cell"><div class="ms-lbl">全国平均</div><div><span class="ms-val ms-val-lg" id="sAvg">-</span><span class="ms-unit">回/10万人</span></div></div>
+        </div>
+        <div class="ms-div"></div>
+        <div class="ms-row-spread">
+          <div class="ms-cell"><div class="ms-lbl">最小</div><div class="ms-val" id="sMin">-</div><div class="ms-sub" id="sMinP"></div></div>
+          <div class="ms-cell"><div class="ms-lbl">Q1</div><div class="ms-val" id="sQ1">-</div></div>
+          <div class="ms-cell" style="text-align:center"><div class="ms-lbl">中央値</div><div class="ms-val" id="sMed">-</div></div>
+          <div class="ms-cell"><div class="ms-lbl">Q3</div><div class="ms-val" id="sQ3">-</div></div>
+          <div class="ms-cell" style="text-align:right"><div class="ms-lbl">最大</div><div class="ms-val" id="sMax">-</div><div class="ms-sub" id="sMaxP"></div></div>
+        </div>
+        <div class="ms-div"></div>
+        <div class="ms-row">
+          <div class="ms-cell"><div class="ms-lbl">ジニ係数</div><div class="ms-val" id="sGini">-</div></div>
+          <div class="ms-cell"><div class="ms-lbl">変動係数</div><div class="ms-val" id="sCV">-</div></div>
+        </div>
+      </div>
+      <div class="legend-ctrl" id="legendCtrl">
+        <div class="lc-row">
+          <span class="lc-lbl">Min</span>
+          <input type="number" class="lc-input" id="scaleMin" min="0" step="100" value="0">
+          <span class="lc-sep">–</span>
+          <span class="lc-lbl">Max</span>
+          <input type="number" class="lc-input" id="scaleMax" min="0" step="100" value="1000">
+          <button class="lc-btn" onclick="applyManualScale()">適用</button>
+          <button class="lc-btn" onclick="resetScale()">自動</button>
+          <span class="lc-badge" id="scaleModeBadge">AUTO</span>
+        </div>
+      </div>
+      <div class="tooltip" id="tooltip"></div>
+      <div class="empty-st" id="empty" style="display:none"><div class="empty-st-text">左のパネルから算定項目を選択してください</div></div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ================================================================ */
+let DATA = null, GEO = null, animTimer = null, lcTimer = null;
+let scaleDomain = null; // [min, max] — null means "compute auto on next render"
+let scaleIsAuto = true; // tracks whether current domain was auto-computed
+let statsPos = null; // projected reference points for responsive stats positioning
+const fmt = d3.format(',.0f'), fmtD = d3.format(',.1f');
+
+/* Color palette — soft blue-teal */
+const CSTOPS = ['#f0f9ff','#bae6fd','#38bdf8','#0284c7','#075985'];
+function makeCS(dom) {
+  return d3.scaleLinear()
+    .domain(d3.range(CSTOPS.length).map(i => dom[0] + i/(CSTOPS.length-1)*(dom[1]-dom[0])))
+    .range(CSTOPS).interpolate(d3.interpolateRgb.gamma(2.2)).clamp(true);
+}
+
+/* ================================================================ */
+/* Data reclassification                                            */
+/* ================================================================ */
+/* 180058750 (MRガイド下集束超音波治療) は M001-2 ではなく K154-4 に分類 */
+const RECLASS_MAP = { '180058750': { code: 'K154-4', name: '経頭蓋MRガイド下集束超音波治療' } };
+function reclassifyData() {
+  Object.entries(RECLASS_MAP).forEach(([procId, target]) => {
+    let moved = null;
+    for (const g of DATA.codes) {
+      const idx = g.procedures.findIndex(p => p.id === procId);
+      if (idx >= 0) { moved = g.procedures.splice(idx, 1)[0]; break; }
+    }
+    if (!moved) return;
+    let tg = DATA.codes.find(g => g.code === target.code);
+    if (!tg) {
+      tg = { code: target.code, name: target.name, procedures: [] };
+      const ins = DATA.codes.findIndex(g => g.code.localeCompare(target.code) > 0);
+      if (ins >= 0) DATA.codes.splice(ins, 0, tg); else DATA.codes.push(tg);
+    }
+    tg.procedures.push(moved);
+  });
+}
+
+/* ================================================================ */
+/* Statistics helpers                                               */
+/* ================================================================ */
+function calcGini(sorted) {
+  const n = sorted.length; if (n === 0) return 0;
+  const mu = sorted.reduce((s,v) => s+v, 0) / n;
+  if (mu === 0) return 0;
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += (2*(i+1) - n - 1) * sorted[i];
+  return sum / (n * n * mu);
+}
+function calcCV(arr) {
+  const n = arr.length; if (n === 0) return 0;
+  const mu = arr.reduce((s,v) => s+v, 0) / n;
+  if (mu === 0) return 0;
+  const v = arr.reduce((s,x) => s + (x-mu)**2, 0) / n;
+  return Math.sqrt(v) / mu;
+}
+
+/* ================================================================ */
+/* Data helpers                                                     */
+/* ================================================================ */
+function getSelectedProcIds() {
+  return [...document.querySelectorAll('.proc-cb:checked')].map(e => e.value);
+}
+function getYear() { return +document.getElementById('yearSlider').value; }
+
+function calcPrefVals(year, procIds) {
+  const r = {}, ys = String(year);
+  Object.keys(DATA.prefectures).forEach(pc => {
+    let tot = 0, hasNA = false, hasVal = false;
+    const bd = {};
+    procIds.forEach(id => {
+      const raw = DATA.counts[id]?.[pc]?.[ys];
+      if (raw === null) { bd[id] = null; hasNA = true; }
+      else if (raw === undefined) { bd[id] = 0; }
+      else { bd[id] = raw; tot += raw; hasVal = true; }
+    });
+    const pop = DATA.population[pc]?.[ys] ?? 0;
+    const allNA = hasNA && !hasVal;
+    r[pc] = { total: allNA ? null : tot, pop,
+              per100k: allNA ? null : (pop > 0 ? tot/pop*1e5 : 0), bd, hasNA };
+  });
+  return r;
+}
+
+/* Lookup: procId → {classCode, className, procName, points} */
+let PROC_LOOKUP = {};
+function buildLookup() {
+  DATA.codes.forEach(g => {
+    g.procedures.forEach(p => {
+      PROC_LOOKUP[p.id] = { classCode: g.code, className: g.name, procName: p.name, points: p.points };
+    });
+  });
+}
+
+/* ================================================================ */
+/* Hierarchical checkbox UI                                         */
+/* ================================================================ */
+function buildProcList() {
+  const el = document.getElementById('procList');
+  el.innerHTML = '';
+  DATA.codes.forEach(g => {
+    const grp = document.createElement('div');
+    grp.className = 'class-group';
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'class-header';
+    hdr.innerHTML = `<span class="class-toggle">&#9654;</span>
+      <input type="checkbox" class="class-cb" data-code="${g.code}">
+      <span class="class-code">${g.code}</span>
+      <span class="class-name" title="${g.name}">${g.name}</span>`;
+    grp.appendChild(hdr);
+
+    // Children container
+    const ch = document.createElement('div');
+    ch.className = 'class-children';
+    g.procedures.forEach(p => {
+      const item = document.createElement('label');
+      item.className = 'proc-item';
+      const pts = p.points != null ? `${fmt(p.points)}点` : '';
+      item.innerHTML = `<input type="checkbox" class="proc-cb" value="${p.id}" data-parent="${g.code}">
+        <span class="proc-name" title="${p.name}">${p.name}</span>
+        <span class="proc-pts">${pts}</span>`;
+      ch.appendChild(item);
+    });
+    grp.appendChild(ch);
+    el.appendChild(grp);
+
+    // Toggle expand
+    const toggle = hdr.querySelector('.class-toggle');
+    const expandClick = () => {
+      const open = ch.classList.toggle('open');
+      toggle.innerHTML = open ? '&#9660;' : '&#9654;';
+    };
+    toggle.addEventListener('click', expandClick);
+    hdr.querySelector('.class-code').addEventListener('click', expandClick);
+    hdr.querySelector('.class-name').addEventListener('click', expandClick);
+
+    // Parent checkbox logic
+    const parentCb = hdr.querySelector('.class-cb');
+    const childCbs = ch.querySelectorAll('.proc-cb');
+    parentCb.addEventListener('change', () => {
+      childCbs.forEach(c => c.checked = parentCb.checked);
+      updateMap(true);
+    });
+    childCbs.forEach(c => c.addEventListener('change', () => {
+      syncParent(parentCb, childCbs);
+      updateMap(true);
+    }));
+  });
+}
+function syncParent(parentCb, childCbs) {
+  const all = childCbs.length;
+  const checked = [...childCbs].filter(c => c.checked).length;
+  parentCb.checked = checked === all;
+  parentCb.indeterminate = checked > 0 && checked < all;
+}
+function toggleAll(on) {
+  document.querySelectorAll('.class-cb,.proc-cb').forEach(c => { c.checked = on; c.indeterminate = false; });
+  updateMap(true);
+}
+function expandAll(open) {
+  document.querySelectorAll('.class-children').forEach(c => c.classList.toggle('open', open));
+  document.querySelectorAll('.class-toggle').forEach(t => t.innerHTML = open ? '&#9660;' : '&#9654;');
+}
+
+/* ================================================================ */
+/* Map                                                              */
+/* ================================================================ */
+let prefPaths = {};
+
+function getPrefCode(name) {
+  return Object.entries(DATA.prefectures).find(([_,n]) => n === name)?.[0] ?? null;
+}
+
+/* Pre-project GeoJSON to Web Mercator coordinates.
+   This avoids D3's spherical path rendering AND fixes latitude distortion. */
+let MGEO = null;
+const MX = lon => lon * Math.PI / 180;
+const MY = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+
+function toMercator(geo) {
+  const out = JSON.parse(JSON.stringify(geo));
+  out.features.forEach(f => {
+    const g = f.geometry;
+    const pj = pt => { pt[0] = MX(pt[0]); pt[1] = MY(pt[1]); };
+    if (g.type === 'Polygon') g.coordinates.forEach(r => r.forEach(pj));
+    else if (g.type === 'MultiPolygon') g.coordinates.forEach(p => p.forEach(r => r.forEach(pj)));
+  });
+  return out;
+}
+
+function initMap() {
+  /* Exit scroll mode to get true container dimensions */
+  const ct = document.querySelector('.map-area');
+  const svgEl = document.getElementById('map-svg');
+  ct.classList.remove('scroll-mode');
+  svgEl.style.height = '';
+  const W = ct.clientWidth - 24, H = ct.clientHeight - 24;
+  const svg = d3.select('#map-svg').attr('viewBox', `0 0 ${W} ${H}`);
+  svg.selectAll('*').remove();
+  prefPaths = {};
+
+  svg.append('rect').attr('width', W).attr('height', H).attr('fill', 'white').attr('rx', 8);
+  const mapH = H - 64;
+
+  if (!MGEO) MGEO = toMercator(GEO);
+  const mainF = MGEO.features.filter(f => f.properties.N03_001 !== '沖縄県');
+  const okiF  = MGEO.features.filter(f => f.properties.N03_001 === '沖縄県');
+
+  /* Bounding box for main Japan in Mercator coords */
+  const lonL = 129, lonR = 146, latB = 30.5, latT = 46;
+  const bbox = { type:'Feature', geometry:{ type:'Polygon', coordinates:[[
+    [MX(lonL),MY(latB)],[MX(lonR),MY(latB)],[MX(lonR),MY(latT)],[MX(lonL),MY(latT)],[MX(lonL),MY(latB)]
+  ]]}};
+  const proj = d3.geoIdentity().reflectY(true).fitExtent([[20, 10], [W - 20, mapH - 10]], bbox);
+  const path = d3.geoPath(proj);
+
+  const defs = svg.append('defs');
+  defs.append('clipPath').attr('id', 'mc').append('rect').attr('width', W).attr('height', mapH);
+
+  /* Main map (clip hides distant islands like 南鳥島) */
+  const mg = svg.append('g').attr('clip-path', 'url(#mc)');
+  mg.selectAll('path').data(mainF).join('path')
+    .attr('d', path).attr('class', 'pref-path')
+    .attr('data-pref', d => getPrefCode(d.properties.N03_001))
+    .on('mouseenter', onHover).on('mousemove', onMove).on('mouseleave', onLeave)
+    .each(function(d) { const pc = getPrefCode(d.properties.N03_001); if (pc) { if (!prefPaths[pc]) prefPaths[pc] = {}; prefPaths[pc].main = this; } });
+
+  /* Okinawa inset — same projection (same scale) */
+  const okiFC = { type:'FeatureCollection', features: okiF };
+  const ob = path.bounds(okiFC);
+  const okiNW = ob[1][0] - ob[0][0], okiNH = ob[1][1] - ob[0][1];
+  const iPd = 5;
+  const bxW = okiNW + iPd * 2, bxH = okiNH + iPd * 2;
+  /* Center inset at X=Ehime(lon~133), Y=Iwate(lat~39.5) */
+  const anchorPt = proj([MX(133), MY(39.5)]);
+  const iX = (anchorPt ? anchorPt[0] : 65) - bxW / 2;
+  const iY = (anchorPt ? anchorPt[1] : 14) - bxH / 2;
+  const dx = iX + iPd - ob[0][0], dy = iY + iPd - ob[0][1];
+
+  const ig = svg.append('g');
+  /* Right + bottom edges only, dashed */
+  ig.append('path')
+    .attr('d', `M${iX + bxW},${iY} V${iY + bxH} H${iX}`)
+    .attr('fill', 'none').attr('stroke', 'var(--border)').attr('stroke-width', 1).attr('stroke-dasharray', '3 2');
+
+  /* Store reference points for responsive stats positioning */
+  const sAnchor = proj([MX(129.5), MY(45.5)]);
+  const hokLeft = proj([MX(140), MY(43)]);
+  const akitaTop = proj([MX(140), MY(40.2)]);
+  const hokTop = proj([MX(140), MY(45.5)]);
+  statsPos = sAnchor ? {
+    baseX: sAnchor[0], baseY: sAnchor[1],
+    hokLeftX: hokLeft ? hokLeft[0] : Infinity,
+    akitaTopY: akitaTop ? akitaTop[1] : Infinity,
+    hokTopY: hokTop ? hokTop[1] : 0
+  } : null;
+
+  const okig = ig.append('g').attr('transform', `translate(${dx},${dy})`);
+  okig.selectAll('path').data(okiF).join('path')
+    .attr('d', path).attr('class', 'pref-path')
+    .attr('data-pref', d => getPrefCode(d.properties.N03_001))
+    .on('mouseenter', onHover).on('mousemove', onMove).on('mouseleave', onLeave)
+    .each(function(d) { const pc = getPrefCode(d.properties.N03_001); if (pc) { if (!prefPaths[pc]) prefPaths[pc] = {}; prefPaths[pc].inset = this; } });
+
+  svg.append('g').attr('class', 'legend-g').attr('transform', `translate(${W / 2},${mapH + 10})`);
+}
+
+/* ================================================================ */
+/* Update                                                           */
+/* ================================================================ */
+function computeAutoDomain(vals) {
+  const v100k = Object.values(vals).map(v => v.per100k).filter(v => v !== null && v > 0);
+  return v100k.length ? [0, d3.quantile(v100k.sort(d3.ascending), .98) || 1] : [0, 1];
+}
+function updateScaleUI() {
+  document.getElementById('scaleMin').value = Math.round(scaleDomain[0]);
+  document.getElementById('scaleMax').value = Math.round(scaleDomain[1]);
+  const b = document.getElementById('scaleModeBadge');
+  b.textContent = scaleIsAuto ? 'AUTO' : '手動';
+  b.style.background = scaleIsAuto ? 'var(--pri-lt)' : '#fef3c7';
+  b.style.color = scaleIsAuto ? 'var(--pri)' : '#92400e';
+}
+/* Legend controls: keep visible while hovering the panel itself */
+function setupLegendCtrl() {
+  const lc = document.getElementById('legendCtrl');
+  lc.addEventListener('mouseenter', () => { clearTimeout(lcTimer); lc.classList.add('visible'); });
+  lc.addEventListener('mouseleave', () => { lcTimer = setTimeout(() => lc.classList.remove('visible'), 400); });
+}
+/* recomputeScale: true when items change, false when only year changes */
+function updateMap(recomputeScale = true) {
+  const ids = getSelectedProcIds(), yr = getYear();
+  document.getElementById('empty').style.display = ids.length ? 'none' : 'flex';
+  const vals = calcPrefVals(yr, ids);
+  if (recomputeScale || !scaleDomain) {
+    scaleDomain = computeAutoDomain(vals);
+    scaleIsAuto = true;
+    updateScaleUI();
+  }
+  const cs = makeCS(scaleDomain);
+  d3.selectAll('.pref-path').each(function(){
+    const pc = this.getAttribute('data-pref'), v = vals[pc];
+    const c = (!v || !ids.length) ? '#f1f5f9'
+             : v.per100k === null ? '#9ca3af'
+             : v.per100k === 0 ? '#f1f5f9' : cs(v.per100k);
+    d3.select(this).transition().duration(300).attr('fill', c);
+  });
+  updateLegend(cs, scaleDomain);
+  updateStats(vals, ids);
+}
+function applyManualScale() {
+  const lo = parseFloat(document.getElementById('scaleMin').value) || 0;
+  const hi = parseFloat(document.getElementById('scaleMax').value) || 1;
+  scaleDomain = [lo, Math.max(lo + 1, hi)];
+  scaleIsAuto = false;
+  updateScaleUI();
+  updateMap(false);
+}
+function resetScale() {
+  scaleDomain = null;
+  scaleIsAuto = true;
+  updateMap(true);
+}
+
+function updateLegend(cs, dom) {
+  const svg = d3.select('#map-svg'), vb = svg.attr('viewBox').split(' ').map(Number), W = vb[2];
+  const g = svg.select('.legend-g'); g.selectAll('*').remove();
+  if(dom[1]<=0) return;
+  const bW = Math.min(280, W*.4), bH = 12;
+  /* Invisible hover zone (behind everything) */
+  g.append('rect').attr('x',-bW/2-10).attr('y',-24).attr('width',bW+100).attr('height',bH+48)
+    .attr('fill','transparent').attr('pointer-events','all');
+  const defs = svg.select('defs');
+  defs.selectAll('#lg').remove();
+  const grad = defs.append('linearGradient').attr('id','lg').attr('x1','0%').attr('x2','100%');
+  for(let i=0;i<=20;i++){const t=i/20; grad.append('stop').attr('offset',`${t*100}%`).attr('stop-color',cs(dom[0]+t*(dom[1]-dom[0])));}
+  g.append('rect').attr('x',-bW/2).attr('width',bW).attr('height',bH).attr('rx',3).style('fill','url(#lg)');
+  const sc = d3.scaleLinear().domain(dom).range([-bW/2,bW/2]);
+  g.append('g').attr('class','legend-axis').attr('transform',`translate(0,${bH})`).call(d3.axisBottom(sc).ticks(5).tickFormat(fmt).tickSize(4));
+  g.append('text').attr('class','legend-title').attr('y',-7).attr('text-anchor','middle').text('人口10万人あたり算定回数');
+  /* NA indicator with hover explanation (tooltip-style) */
+  const naX = bW/2 + 20;
+  const naG = g.append('g').attr('pointer-events','all');
+  naG.append('rect').attr('x', naX).attr('width', 14).attr('height', bH).attr('rx', 2).attr('fill', '#9ca3af');
+  naG.append('text').attr('x', naX + 20).attr('y', bH - 1).style('font-size','14px').attr('fill','var(--text-ll)').text('データなし');
+  naG.on('mouseenter', function(ev) {
+    const tip = document.getElementById('tooltip');
+    tip.innerHTML = '<div class="tt-pref">データなし</div><div style="font-size:11.5px;color:var(--text-l)">値の欠損、または10未満の値が<br>プライバシー保護のためマスクされています</div>';
+    tip.classList.add('visible');
+    positionTip(ev);
+  }).on('mousemove', function(ev) { positionTip(ev); })
+    .on('mouseleave', function() { document.getElementById('tooltip').classList.remove('visible'); });
+  function positionTip(ev) {
+    const tip = document.getElementById('tooltip'), r = document.querySelector('.map-area').getBoundingClientRect();
+    let x = ev.clientX - r.left + 14, y = ev.clientY - r.top - 8;
+    const tr = tip.getBoundingClientRect();
+    if (x + tr.width > r.width - 8) x = ev.clientX - r.left - tr.width - 14;
+    if (y + tr.height > r.height - 8) y = r.height - tr.height - 8;
+    if (y < 8) y = 8;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  /* Legend hover → show scale controls */
+  const lc = document.getElementById('legendCtrl');
+  g.style('cursor','pointer')
+    .on('mouseenter', () => { clearTimeout(lcTimer); lc.classList.add('visible'); })
+    .on('mouseleave', () => { lcTimer = setTimeout(() => lc.classList.remove('visible'), 400); });
+}
+
+function positionStats() {
+  const ms = document.getElementById('mapStats');
+  const mapArea = document.querySelector('.map-area');
+  const svgEl = document.getElementById('map-svg');
+  if (!statsPos || ms.style.display === 'none') {
+    mapArea.classList.remove('scroll-mode');
+    svgEl.style.height = '';
+    return;
+  }
+  const pad = 12;
+  /* Check if stats right edge would overlap Hokkaido left */
+  const msW = ms.offsetWidth;
+  const statsR = statsPos.baseX + msW;
+  if (statsR > statsPos.hokLeftX) {
+    /* Scroll mode: stats in-flow above map, area scrollable */
+    if (!mapArea.classList.contains('scroll-mode')) {
+      mapArea.classList.add('scroll-mode');
+      const vb = svgEl.getAttribute('viewBox')?.split(' ').map(Number);
+      if (vb) svgEl.style.height = vb[3] + 'px';
+    }
+    ms.style.left = '';
+    ms.style.top = '';
+  } else {
+    /* Normal mode: absolute overlay */
+    if (mapArea.classList.contains('scroll-mode')) {
+      mapArea.classList.remove('scroll-mode');
+      svgEl.style.height = '';
+    }
+    ms.style.left = Math.round(statsPos.baseX + pad) + 'px';
+    ms.style.top = Math.round(statsPos.baseY + pad) + 'px';
+    const msH = ms.offsetHeight;
+    const statsB = statsPos.baseY + msH;
+    if (statsB > statsPos.akitaTopY) {
+      const newTop = Math.max(4, statsPos.hokTopY + pad - msH - 8);
+      ms.style.top = newTop + 'px';
+    }
+  }
+}
+
+function updateStats(vals, ids) {
+  const panel = document.getElementById('mapStats');
+  const n = ids.length > 0;
+  panel.style.display = n ? '' : 'none';
+  if (!n) return;
+  const es = Object.entries(vals);
+  const valid = es.filter(([_,v]) => v.total !== null);
+  const totC = valid.reduce((s,[_,v])=>s+v.total,0);
+  const totP = valid.reduce((s,[_,v])=>s+v.pop,0);
+  const avg = totP>0 ? totC/totP*1e5 : 0;
+  let maxV=0,minV=Infinity,maxPr='-',minPr='-';
+  valid.forEach(([pc,v])=>{ if(v.per100k>maxV){maxV=v.per100k;maxPr=DATA.prefectures[pc]} if(v.per100k>0&&v.per100k<minV){minV=v.per100k;minPr=DATA.prefectures[pc]} });
+  const sorted = valid.map(([_,v])=>v.per100k).filter(v=>v!==null).sort(d3.ascending);
+  const q1 = d3.quantile(sorted,.25)||0, med = d3.quantile(sorted,.5)||0;
+  const q3 = d3.quantile(sorted,.75)||0;
+  const gini = calcGini(sorted), cv = calcCV(sorted);
+  document.getElementById('sAvg').textContent = fmt(avg);
+  document.getElementById('sTotal').textContent = fmt(totC);
+  document.getElementById('sMax').textContent = fmt(maxV);
+  document.getElementById('sMaxP').textContent = maxPr;
+  document.getElementById('sMin').textContent = minV<Infinity ? fmt(minV) : '-';
+  document.getElementById('sMinP').textContent = minV<Infinity ? minPr : '';
+  document.getElementById('sQ1').textContent = fmt(q1);
+  document.getElementById('sMed').textContent = fmt(med);
+  document.getElementById('sQ3').textContent = fmt(q3);
+  document.getElementById('sGini').textContent = gini.toFixed(3);
+  document.getElementById('sCV').textContent = cv.toFixed(3);
+  positionStats();
+}
+
+/* ================================================================ */
+/* Tooltip                                                          */
+/* ================================================================ */
+function onHover(ev, d) {
+  d3.selectAll('.pref-path.hovered').classed('hovered', false);
+  d3.select(this).raise().classed('hovered', true);
+  const pc = this.getAttribute('data-pref');
+  const ids = getSelectedProcIds(), yr = getYear(), vals = calcPrefVals(yr, ids), v = vals[pc];
+  let h = `<div class="tt-pref">${DATA.prefectures[pc]}</div>`;
+  if (ids.length && v) {
+    // Group by class for readability
+    const groups = {};
+    ids.forEach(id => {
+      const info = PROC_LOOKUP[id];
+      if (!info) return;
+      if (!groups[info.classCode]) groups[info.classCode] = { name: info.className, items: [] };
+      groups[info.classCode].items.push({ id, name: info.procName, count: v.bd[id] });
+    });
+    Object.entries(groups).forEach(([cc, g]) => {
+      if (ids.length > 3) {
+        const na = g.items.some(i => i.count === null);
+        const sum = g.items.reduce((s,i) => s + (i.count ?? 0), 0);
+        h += `<div class="tt-row"><span class="tt-lbl">${cc} ${g.name}</span><span class="tt-val">${na && sum===0 ? '-' : fmt(sum)}</span></div>`;
+      } else {
+        g.items.forEach(i => {
+          h += `<div class="tt-row"><span class="tt-lbl">${i.name}</span><span class="tt-val">${i.count===null ? '-' : fmt(i.count)}</span></div>`;
+        });
+      }
+    });
+    if (ids.length > 1) { h += `<div class="tt-div"></div><div class="tt-row"><span class="tt-lbl">合計</span><span class="tt-val">${v.total===null ? '-' : fmt(v.total)}</span></div>`; }
+    h += `<div class="tt-div"></div>`;
+    h += `<div class="tt-row"><span class="tt-lbl">人口</span><span class="tt-val">${fmt(v.pop)}</span></div>`;
+    h += `<div class="tt-row"><span class="tt-lbl">10万人あたり</span><span class="tt-val tt-hi">${v.per100k===null ? '-' : fmtD(v.per100k)}</span></div>`;
+  }
+  const tip = document.getElementById('tooltip');
+  tip.innerHTML = h; tip.classList.add('visible');
+}
+function onMove(ev) {
+  const tip = document.getElementById('tooltip'), r = document.querySelector('.map-area').getBoundingClientRect();
+  let x = ev.clientX-r.left+14, y = ev.clientY-r.top-8;
+  const tr = tip.getBoundingClientRect();
+  if(x+tr.width>r.width-8) x = ev.clientX-r.left-tr.width-14;
+  if(y+tr.height>r.height-8) y = r.height-tr.height-8;
+  if(y<8) y=8;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function onLeave() {
+  d3.select(this).classed('hovered', false);
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+/* ================================================================ */
+/* Controls                                                         */
+/* ================================================================ */
+function setupControls() {
+  buildProcList();
+  // Default selection: M000 partial (exclude 外部/腔内/組織内), M001-2/3/4 full
+  const defaultIds = new Set([
+    '113001110','180018410','180018510','180019010','180019110','180019210','180019310','180031710', // M000 (excl 外部/腔内/組織内)
+    '180018910', // M001-2 (180058750 は K154-4 に再分類)
+    '180019710','180026750','180035310', // M001-3
+    '180046610','180046710','180055010','180055110','180055210','180055310' // M001-4
+  ]);
+  document.querySelectorAll('.proc-cb').forEach(c => { if (defaultIds.has(c.value)) c.checked = true; });
+  // Sync parent checkboxes & open checked groups
+  document.querySelectorAll('.class-cb').forEach(pcb => {
+    const grp = pcb.closest('.class-group');
+    const children = grp.querySelectorAll('.proc-cb');
+    const checked = [...children].filter(c => c.checked).length;
+    if (checked > 0) {
+      pcb.checked = checked === children.length;
+      pcb.indeterminate = checked > 0 && checked < children.length;
+      grp.querySelector('.class-children').classList.add('open');
+      grp.querySelector('.class-toggle').innerHTML = '&#9660;';
+    }
+  });
+
+  const sl = document.getElementById('yearSlider');
+  sl.addEventListener('input', () => { document.getElementById('yearDisp').innerHTML = sl.value+'<span>年度</span>'; updateMap(false); });
+  const tEl = document.getElementById('yearTicks');
+  DATA.years.forEach(y => { const s=document.createElement('span'); s.textContent = y%2===0?y:''; tEl.appendChild(s); });
+}
+
+/* ================================================================ */
+/* Animation                                                        */
+/* ================================================================ */
+function toggleAnim() { animTimer ? stopAnim() : startAnim(); }
+function startAnim() {
+  const btn=document.getElementById('playBtn'); btn.innerHTML='&#9632; 停止'; btn.classList.add('active');
+  const sp = +document.getElementById('speedSel').value, sl = document.getElementById('yearSlider');
+  animTimer = setInterval(()=>{ let y=+sl.value; y = y>=2023?2014:y+1; sl.value=y; document.getElementById('yearDisp').innerHTML=y+'<span>年度</span>'; updateMap(false); }, sp);
+}
+function stopAnim() { clearInterval(animTimer); animTimer=null; const b=document.getElementById('playBtn'); b.innerHTML='&#9654; 再生'; b.classList.remove('active'); }
+document.getElementById('speedSel').addEventListener('change', () => { if (animTimer) { stopAnim(); startAnim(); } });
+
+/* ================================================================ */
+/* CSV                                                              */
+/* ================================================================ */
+function downloadCSV() {
+  const ids = getSelectedProcIds(), yr = getYear(), vals = calcPrefVals(yr, ids);
+  let csv = '\uFEFF都道府県コード,都道府県名,年度';
+  ids.forEach(id => { const info = PROC_LOOKUP[id]; csv += `,${id}_${info?.procName||id}`; });
+  csv += ',合計算定回数,人口,人口10万人あたり\n';
+  Object.keys(DATA.prefectures).sort().forEach(pc => {
+    const v = vals[pc];
+    csv += `${pc},${DATA.prefectures[pc]},${yr}`;
+    ids.forEach(id => { const c = v.bd[id]; csv += `,${c===null ? '-' : (c||0)}`; });
+    csv += `,${v.total===null ? '-' : v.total},${v.pop},${v.per100k===null ? '-' : (v.pop>0?v.per100k.toFixed(1):'')}\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download = `ndb_radiation_${yr}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ================================================================ */
+/* Sidebar toggle                                                   */
+/* ================================================================ */
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const rh = document.getElementById('resizeHandle');
+  const btn = document.getElementById('sidebarToggle');
+  const collapsed = sb.classList.toggle('collapsed');
+  rh.style.display = collapsed ? 'none' : '';
+  btn.classList.toggle('active', !collapsed);
+  /* Re-render map after CSS transition */
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { initMap(); updateMap(false); }, 280);
+}
+
+/* ================================================================ */
+/* Resize                                                           */
+/* ================================================================ */
+let resizeT;
+window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(()=>{ initMap(); updateMap(false); }, 200); });
+
+/* Sidebar drag-resize */
+function setupResize() {
+  const handle = document.getElementById('resizeHandle');
+  const sidebar = document.querySelector('.sidebar');
+  let startX, startW;
+  handle.addEventListener('mousedown', e => {
+    startX = e.clientX; startW = sidebar.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', onDragEnd);
+    e.preventDefault();
+  });
+  function onDrag(e) {
+    const newW = Math.max(220, Math.min(700, startW + e.clientX - startX));
+    sidebar.style.width = newW + 'px';
+  }
+  function onDragEnd() {
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', onDragEnd);
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => { initMap(); updateMap(false); }, 150);
+  }
+}
+
+/* ================================================================ */
+/* Init                                                             */
+/* ================================================================ */
+async function init() {
+  try {
+    const [gr, dr] = await Promise.all([fetch('data/prefectures.geojson'), fetch('data/ndb_radiation.json')]);
+    GEO = await gr.json(); DATA = await dr.json();
+    reclassifyData(); buildLookup(); setupControls(); setupResize(); setupLegendCtrl();
+    initMap(); updateMap(true);
+    document.getElementById('loading').classList.add('hidden');
+  } catch(e) {
+    document.querySelector('.load-text').textContent = 'データ読み込み失敗。python3 -m http.server でサーブしてください。';
+    console.error(e);
+  }
+}
+init();
+</script>
+</body>
+</html>
