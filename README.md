@@ -1,27 +1,26 @@
-# NDB Open Data - 都道府県別 算定回数マップ
+# NDB Open Data - 都道府県別ダッシュボード v2.0
 
-NDB（レセプト情報・特定健診等情報データベース）オープンデータを用いて、医科診療行為の都道府県別算定回数をインタラクティブに可視化するWebアプリケーションです。
+NDB（レセプト情報・特定健診等情報データベース）オープンデータと医療施設調査・医師統計を組み合わせ、都道府県別の医療提供体制をインタラクティブに可視化する Web アプリケーションです。
 
 ## 機能
 
-- **コロプレスマップ**: D3.js による都道府県別塗り分け地図（沖縄インセット付き）
-- **診療行為の階層選択**: 分類コード単位でのチェックボックスツリー（複数選択・合算対応）
-- **年度スライダー**: 2014〜2023年度を切り替え（自動再生アニメーション付き）
-- **統計パネル**: 合計・平均・四分位・ジニ係数・変動係数をリアルタイム表示
-- **凡例スケール調整**: 自動/手動切替
-- **CSVダウンロード**: 表示中のデータをCSVエクスポート
-
-## 対象データ
-
-| 区分 | 分類コード | 内容 |
-|------|-----------|------|
-| M 放射線治療 | M000〜M005 | 体外照射、ガンマナイフ、粒子線治療 等 |
-| K 手術 | K843〜K843-4 | 前立腺悪性腫瘍手術 等 |
-| D 検査 | D413, D009 | 前立腺針生検法、腫瘍マーカー 等 |
+- **コロプレスマップ**: D3.js による都道府県別塗り分け地図（沖縄インセット、ズーム/パン対応）
+- **A/B 切替・A/B 比表示**: 2 つの設定（表示A・表示B）を独立に保持。A・B 比モードは diverging palette で発散を可視化
+- **年次推移モード**: 表示A / 表示B / A・B 比 の 3 サブチャートを縦並びで描画。表示値・ジニ係数・変動係数の系列をチェックボックスで切替
+- **分子の選択**
+  - NDB 算定（M放射線治療、K手術、D検査）— 階層チェックボックスで複数選択・合算
+  - 施設指標（病院数、医師数、放射線科医、看護師、診療放射線技師、リニアック・体外照射・ガンマナイフ・腔内/組織内）
+- **分母の選択（9 種）**: 実数 / 人口10万 / 65歳以上人口10万 / SCR（年齢・性別調整） / リニアック1台 / 病院1施設 / 放射線科医1人 / 看護師1人(常勤換算) / 放射線技師1人(常勤換算)
+- **配色**: 7 種の sequential + 4 種の diverging + カスタムカラー。表示A/表示B/A・B比 で独立に保持
+- **凡例コントロール**: デュアルレンジスライダ、min/max 手動指定、自動/手動切替
+- **年度スライダー**: 2014〜2023 年度、自動再生
+- **統計パネル**: 全国合計・平均・四分位・IQR・ジニ係数・変動係数
+- **CSV ダウンロード**: 表示中データの CSV エクスポート（年次推移モードでは全年度集計版）
+- **免責事項**: 起動時オーバーレイ＋サイドバーから再表示可能
 
 ## デモ
 
-ローカルで動かす場合:
+ローカル起動:
 
 ```bash
 # プロジェクトルートで HTTP サーバーを起動
@@ -31,80 +30,71 @@ python -m http.server 8000
 # http://localhost:8000
 ```
 
-> GitHub Pages で公開する場合は、リポジトリの Settings → Pages で Source を `main` ブランチのルートに設定してください。
+GitHub Pages 公開時はリポジトリの Settings → Pages で Source を `master` のルートに設定してください。
 
 ## ディレクトリ構成
 
 ```
-NDB-Open/
-├── index.html                  Webアプリ本体（D3.js）
-├── data/                       Webアプリ用データ
-│   ├── ndb_radiation.json        算定回数JSON（全分類・全年度）
-│   └── prefectures.geojson       都道府県境界GeoJSON
-├── scripts/                    Rデータパイプライン
-│   ├── 01_download_ndb_data.R    NDBデータのダウンロード
-│   ├── 02_analyze_M_radiation.R  M放射線治療の集計・可視化
-│   ├── 03_per_capita_analysis.R  人口あたり算定回数の分析
-│   ├── 04_choropleth_map.R       コロプレスマップ（静的画像）
-│   └── 05_prepare_web_data.R     Webアプリ用JSON生成
-├── rawdata/                    元データ（XLSX・人口推計）
-│   ├── M_radiation_pref/         M放射線治療 都道府県別XLSX（10年分）
-│   ├── K_surgery_pref/           K手術 都道府県別XLSX（10年分）
-│   ├── D_exam_pref/              D検査 都道府県別XLSX（10年分）
-│   ├── population_pref_*.xls(x)  総務省 人口推計
-│   └── prefectures.geojson       都道府県境界（元ファイル）
-├── output/                     分析結果（PNG・CSV）
-├── DATA_SOURCES.md             データソース詳細ドキュメント
+NDB-Open_2026JASTRO/
+├── index.html                  Web アプリ本体（D3.js v7、シングル HTML）
+├── data/                       Web アプリ配信用データ
+│   ├── dashboard_data.json       全部入り JSON（scripts/10 が出力）
+│   └── prefectures.geojson       都道府県境界 GeoJSON
+├── scripts/                    R データパイプライン
+│   ├── 01_download_ndb_data.R          NDB Open Data ダウンロード
+│   ├── 02_download_facility_data.R     医療施設調査
+│   ├── 03_download_physician_data.R    医師・歯科医師・薬剤師統計
+│   ├── 04_download_population_data.R   人口推計（総人口＋5歳階級別）
+│   ├── 05_download_geo_data.R          地理データ（都道府県 GeoJSON）
+│   └── 10_prepare_web_data.R           統合 JSON 生成
+├── rawdata_dl/                 R が落とした生データ（gitignore）
+├── _legacy/                    v1.00 退避（参照用、index.html 等）
+├── docs/superpowers/           設計書・実装プラン
+├── DATA_SOURCES.md             データソース詳細
 ├── LICENSE                     CC BY 4.0
 └── README.md                   本ファイル
 ```
 
 ## データパイプライン（再現手順）
 
-Rスクリプトを順番に実行することで、元データのダウンロードからWebアプリ用JSONの生成まで再現できます。
+R スクリプトを順番に実行することで、生データのダウンロードから Web アプリ用 JSON の生成まで再現できます。
 
 ```r
-# 1. NDB Open Data のダウンロード（厚生労働省サイトから30ファイル）
-source("scripts/01_download_ndb_data.R")
-
-# 2. M放射線治療の集計・可視化（→ output/ に PNG・CSV）
-source("scripts/02_analyze_M_radiation.R")
-
-# 3. 人口あたり算定回数の分析（→ output/ に PNG・CSV）
-source("scripts/03_per_capita_analysis.R")
-
-# 4. コロプレスマップの作成（→ output/ に PNG）
-source("scripts/04_choropleth_map.R")
-
-# 5. Webアプリ用JSON生成（→ data/ に JSON・GeoJSON）
-source("scripts/05_prepare_web_data.R")
+setwd("C:/path/to/NDB-Open_2026JASTRO")
+source("scripts/01_download_ndb_data.R")        # 厚労省 NDB ダウンロード
+source("scripts/02_download_facility_data.R")   # e-Stat 医療施設調査
+source("scripts/03_download_physician_data.R")  # e-Stat 医師統計
+source("scripts/04_download_population_data.R") # 総務省 人口推計
+source("scripts/05_download_geo_data.R")        # 都道府県 GeoJSON
+source("scripts/10_prepare_web_data.R")         # → data/dashboard_data.json
 ```
 
-### 必要なRパッケージ
+ダウンロード済みファイルは skip ロジックにより再ダウンロード不要です。
 
-| パッケージ | 用途 | 使用スクリプト |
-|-----------|------|--------------|
-| `here` | プロジェクトルート管理 | 全スクリプト |
-| `readxl` | Excel (.xls/.xlsx) 読み込み | 01, 02, 03, 05 |
-| `dplyr` | データ操作 | 02, 03, 04, 05 |
-| `tidyr` | データ整形 | 02, 03, 05 |
-| `stringr` | 文字列処理 | 02, 03, 05 |
-| `zoo` | 前方補完 | 02, 05 |
-| `ggplot2` | グラフ描画 | 02, 03, 04 |
-| `scales` | 軸ラベル書式 | 02, 03, 04 |
-| `sf` | 地理空間データ | 04 |
-| `jsonlite` | JSON出力 | 05 |
+### 必要な R パッケージ
+
+| パッケージ | 用途 |
+|-----------|------|
+| `readxl` | Excel (.xls/.xlsx) 読み込み |
+| `dplyr` | データ操作 |
+| `tidyr` | データ整形 |
+| `stringr` | 文字列処理 |
+| `zoo` | 前方補完 |
+| `jsonlite` | JSON 出力 |
+| `foreign` | DBF ファイル読み込み（A38 地理データ用） |
+| `sf` | 地理空間データ |
 
 ```r
-install.packages(c("here", "readxl", "dplyr", "tidyr", "stringr",
-                    "zoo", "ggplot2", "scales", "sf", "jsonlite"))
+install.packages(c("readxl","dplyr","tidyr","stringr","zoo","jsonlite","foreign","sf"))
 ```
 
 ## データソース
 
 - **NDB Open Data**: 厚生労働省 https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177182.html
+- **医療施設調査**: e-Stat https://www.e-stat.go.jp/ (toukei=00450021)
+- **医師・歯科医師・薬剤師統計**: e-Stat (toukei=00450026)
 - **人口推計**: 総務省統計局 https://www.stat.go.jp/data/jinsui/2.html
-- **都道府県境界**: 国土数値情報 N03（行政区域）を基に簡素化 ([smartnews-smri/japan-topography](https://github.com/smartnews-smri/japan-topography))
+- **都道府県境界**: smartnews-smri/japan-topography (国土数値情報 N03 簡素化)
 
 詳細は [DATA_SOURCES.md](DATA_SOURCES.md) を参照してください。
 
@@ -112,5 +102,9 @@ install.packages(c("here", "readxl", "dplyr", "tidyr", "stringr",
 
 [CC BY 4.0](LICENSE)
 
-本プロジェクトのコード・分析結果は CC BY 4.0 でライセンスされています。
-元データの利用条件は各提供元の規約に従ってください。
+本プロジェクトのコード・分析結果は CC BY 4.0 でライセンスされています。元データの利用条件は各提供元の規約に従ってください。
+
+## バージョン履歴
+
+- **v2.0** (2026-05-25): 試験版ベースに刷新。A/B 切替・A/B 比・年次推移モード、施設指標、分母 9 種を追加。
+- **v1.00** (2026-02-13): 初期リリース。NDB 算定回数の人口10万あたりマップ。
