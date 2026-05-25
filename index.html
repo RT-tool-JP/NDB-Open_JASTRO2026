@@ -241,6 +241,30 @@ body.disclaimer-reshow .disclaimer-ok-btn{display:inline-block;background:var(--
 body.disclaimer-reshow .disclaimer-ok-btn:hover{background:var(--pri-h)}
 body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
 
+/* Trends mode */
+.trends-area{position:absolute;inset:0;padding:16px 18px;overflow-y:auto;display:flex;flex-direction:column;background:var(--bg)}
+.trends-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0}
+.trends-title{font-size:17px;font-weight:700;color:var(--text)}
+.trends-checks{display:flex;gap:16px}
+.trends-check{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--text-m);cursor:pointer;user-select:none}
+.trends-check input{accent-color:var(--pri);cursor:pointer;width:15px;height:15px}
+.trends-charts{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.trends-chart{background:var(--card);border:1px solid var(--border-lt);border-radius:var(--rad);padding:10px 12px 8px;min-height:200px;display:flex;flex-direction:column}
+.trends-chart-title{font-size:13px;font-weight:600;color:var(--text-m);margin-bottom:2px;flex-shrink:0}
+.trends-chart svg{width:100%;flex:1;min-height:180px;display:block}
+.trends-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-ll);font-size:13px}
+.trends-axis text{font-size:11px;fill:var(--text-l)}
+.trends-axis path,.trends-axis line{stroke:var(--text-ll);stroke-width:.5}
+.trends-grid line{stroke:var(--border-lt);stroke-width:.5;stroke-dasharray:2,2}
+.trends-line-value{fill:none;stroke:var(--pri);stroke-width:2.5}
+.trends-line-value-b{fill:none;stroke:#d97706;stroke-width:2.5}
+.trends-line-value-r{fill:none;stroke:#7c3aed;stroke-width:2.5}
+.trends-line-gini{fill:none;stroke:#f59e0b;stroke-width:2;stroke-dasharray:5,3}
+.trends-line-cv{fill:none;stroke:#16a34a;stroke-width:2;stroke-dasharray:2,3}
+.trends-dot{stroke:#fff;stroke-width:1}
+.trends-legend{font-size:11px;fill:var(--text-l)}
+.trends-axis-lbl{font-size:10px;fill:var(--text-ll)}
+
 /* Loading */
 .loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;transition:opacity .3s}
 .loading.hidden{opacity:0;pointer-events:none}
@@ -358,7 +382,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
           <div class="fac-list" id="facList"></div>
         </div>
       </div>
-      <div class="panel">
+      <div class="panel" id="yearPanel">
         <h3>年度</h3>
         <div class="year-disp" id="yearDisp">2023<span>年度</span></div>
         <input type="range" id="yearSlider" min="2014" max="2023" value="2023" step="1">
@@ -442,6 +466,17 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       </div>
       <div class="tooltip" id="tooltip"></div>
       <div class="empty-st" id="empty" style="display:none"><div class="empty-st-text">左のパネルから算定項目を選択してください</div></div>
+      <div class="trends-area" id="trendsArea" style="display:none">
+        <div class="trends-header">
+          <div class="trends-title">年次推移</div>
+          <div class="trends-checks">
+            <label class="trends-check"><input type="checkbox" id="trShowValue" checked onchange="renderTrends()"> 表示値</label>
+            <label class="trends-check"><input type="checkbox" id="trShowGini" checked onchange="renderTrends()"> ジニ係数</label>
+            <label class="trends-check"><input type="checkbox" id="trShowCV" checked onchange="renderTrends()"> 変動係数</label>
+          </div>
+        </div>
+        <div class="trends-charts" id="trendsCharts"></div>
+      </div>
     </main>
   </div>
 </div>
@@ -1040,9 +1075,9 @@ function setDisplayMode(mode) {
     }
   });
 
-  // Show/hide edit target controls
+  // Show/hide edit target controls (visible in ratio + trends so both A and B can be edited)
   const eta = document.getElementById('editTargetArea');
-  eta.style.display = (mode === 'ratio') ? '' : 'none';
+  eta.style.display = (mode === 'ratio' || mode === 'trends') ? '' : 'none';
 
   // Update edit target & sidebar
   if (mode === 'A') {
@@ -1050,13 +1085,16 @@ function setDisplayMode(mode) {
   } else if (mode === 'B') {
     setEditTargetInternal('B');
   }
-  // ratio mode: keep current edit target
+  // ratio / trends: keep current edit target
 
   // Reset default palette on mode change unless user has explicitly chosen one
   if (!userPickedPalette) {
     curPalette = null; // forces getActivePaletteKey() to return new default
     customStops = null;
   }
+
+  // Toggle main-area visibility for trends mode
+  applyTrendsLayout();
 
   updateDenomUI();
   updateConfigBadges();
@@ -1066,10 +1104,29 @@ function setDisplayMode(mode) {
   updateMap(true);
 }
 
+/* Show/hide main-area elements depending on whether we're in trends mode.
+   Other-mode visibility is restored automatically by updateMap()/updateStats(). */
+function applyTrendsLayout() {
+  const isTrends = curDisplayMode === 'trends';
+  const set = (sel, show) => { const el = document.querySelector(sel); if (el) el.style.display = show ? '' : 'none'; };
+  set('#map-svg', !isTrends);
+  set('.zoom-controls', !isTrends);
+  set('#legendCtrl', !isTrends);
+  set('#trendsArea', isTrends);
+  set('#yearPanel', !isTrends);
+  if (isTrends) {
+    // Hide map-overlay UI; updateStats() will re-show mapStats next time we leave trends.
+    const ms = document.getElementById('mapStats'); if (ms) ms.style.display = 'none';
+    const ys = document.getElementById('yearSource'); if (ys) ys.style.display = 'none';
+    const empty = document.getElementById('empty'); if (empty) empty.style.display = 'none';
+  }
+}
+
 function applyRatioLockUI() {
   const section = document.getElementById('numeratorSection');
   const hint = document.getElementById('ratioLockHint');
   if (!section) return;
+  // Lock only in ratio mode. Trends mode keeps sidebar editable so users can tweak A/B configs.
   const lock = curDisplayMode === 'ratio';
   section.classList.toggle('disabled-section', lock);
   if (hint) hint.classList.toggle('visible', lock);
@@ -1334,6 +1391,11 @@ function hasData() {
 }
 
 function updateMap(recomputeScale = true) {
+  if (curDisplayMode === 'trends') {
+    document.getElementById('empty').style.display = 'none';
+    renderTrends();
+    return;
+  }
   const show = hasData();
   document.getElementById('empty').style.display = show ? 'none' : 'flex';
   const yr = getYear();
@@ -1458,6 +1520,202 @@ function updateMapRatio(yr, show, recomputeScale) {
   updateLegend(cs, scaleDomain, true);
   updateStatsRatio(rvals);
   updateUnitLabels();
+}
+
+/* ================================================================ */
+/* TRENDS MODE                                                       */
+/* ================================================================ */
+/* Aggregate one year for a given target ('A'|'B'|'ratio'):
+   - For A / B: arithmetic mean of dv across prefectures with values
+   - For ratio: arithmetic mean of (aNum/bNum) where defined
+   Returns { value, gini, cv, n } or all-null if no values. */
+function trendsAggregateYear(target, yr) {
+  let vals;
+  if (target === 'A') {
+    if (!hasDataForConfig(configA)) return { value: null, gini: null, cv: null, n: 0 };
+    vals = Object.values(calcValsForConfig(configA, yr)).map(v => v.dv).filter(v => v != null && isFinite(v));
+  } else if (target === 'B') {
+    if (!hasDataForConfig(configB)) return { value: null, gini: null, cv: null, n: 0 };
+    vals = Object.values(calcValsForConfig(configB, yr)).map(v => v.dv).filter(v => v != null && isFinite(v));
+  } else {
+    if (!hasDataForConfig(configA) || !hasDataForConfig(configB)) return { value: null, gini: null, cv: null, n: 0 };
+    vals = Object.values(calcRatioVals(yr)).map(v => v.ratio).filter(v => v != null && isFinite(v));
+  }
+  if (!vals.length) return { value: null, gini: null, cv: null, n: 0 };
+  const mean = d3.mean(vals);
+  const sorted = vals.slice().sort(d3.ascending);
+  return { value: mean, gini: calcGini(sorted), cv: calcCV(vals), n: vals.length };
+}
+
+function renderTrends() {
+  if (curDisplayMode !== 'trends') return;
+  const checks = {
+    showVal: document.getElementById('trShowValue')?.checked ?? true,
+    showGini: document.getElementById('trShowGini')?.checked ?? true,
+    showCV: document.getElementById('trShowCV')?.checked ?? true,
+  };
+  const years = (DATA && DATA.ndb && DATA.ndb.years) ? DATA.ndb.years.slice() : [];
+  if (!years.length) return;
+
+  const targets = [
+    { target: 'A', label: '表示A: ' + getConfigLabel(configA), lineClass: 'trends-line-value', dotColor: 'var(--pri)' },
+    { target: 'B', label: '表示B: ' + getConfigLabel(configB), lineClass: 'trends-line-value-b', dotColor: '#d97706' },
+    { target: 'ratio', label: 'A・B 比 (A/B)', lineClass: 'trends-line-value-r', dotColor: '#7c3aed' },
+  ];
+
+  const series = targets.map(t => {
+    const data = years.map(yr => {
+      const agg = trendsAggregateYear(t.target, yr);
+      return { year: yr, ...agg };
+    });
+    return { ...t, data };
+  });
+
+  const container = d3.select('#trendsCharts');
+  container.selectAll('*').remove();
+  series.forEach(s => {
+    const div = container.append('div').attr('class', 'trends-chart');
+    div.append('div').attr('class', 'trends-chart-title').text(s.label);
+    const hasAny = s.data.some(d => d.value != null || d.gini != null || d.cv != null);
+    if (!hasAny) {
+      div.append('div').attr('class', 'trends-empty').text('データなし');
+      return;
+    }
+    const svg = div.append('svg');
+    drawTrendChart(svg, s.data, checks, s);
+  });
+}
+
+function drawTrendChart(svg, data, opts, meta) {
+  // Measure the SVG container
+  const node = svg.node();
+  const rect = node.getBoundingClientRect();
+  const W = Math.max(320, Math.floor(rect.width));
+  const H = Math.max(170, Math.floor(rect.height));
+  svg.attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'none');
+  svg.selectAll('*').remove();
+
+  const m = { top: 18, right: 56, bottom: 28, left: 56 };
+  const iw = W - m.left - m.right;
+  const ih = H - m.top - m.bottom;
+  const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
+
+  // X scale (years)
+  const years = data.map(d => d.year);
+  const x = d3.scalePoint().domain(years).range([0, iw]).padding(0.5);
+
+  // Left Y: value
+  const valVals = data.map(d => d.value).filter(v => v != null && isFinite(v));
+  let yLeft;
+  if (valVals.length) {
+    let vMin = d3.min(valVals);
+    let vMax = d3.max(valVals);
+    if (vMin === vMax) { vMin = vMin * 0.9; vMax = vMax * 1.1 || 1; }
+    if (meta && meta.target === 'ratio') {
+      const span = Math.max(vMax - 1, 1 - vMin, 0.05);
+      vMin = Math.min(vMin, 1 - span * 0.1);
+      vMax = Math.max(vMax, 1 + span * 0.1);
+    } else {
+      vMin = Math.min(vMin, 0);
+      vMax = vMax * 1.05;
+    }
+    yLeft = d3.scaleLinear().domain([vMin, vMax]).range([ih, 0]).nice();
+  } else {
+    yLeft = d3.scaleLinear().domain([0, 1]).range([ih, 0]);
+  }
+
+  // Right Y: gini/cv (0..1.2)
+  const rightVals = [...data.map(d => d.gini), ...data.map(d => d.cv)].filter(v => v != null && isFinite(v));
+  const rMax = rightVals.length ? Math.max(1.0, d3.max(rightVals) * 1.1) : 1.0;
+  const yRight = d3.scaleLinear().domain([0, rMax]).range([ih, 0]).nice();
+
+  // Grid
+  g.append('g').attr('class', 'trends-grid')
+    .selectAll('line').data(yLeft.ticks(4)).join('line')
+    .attr('x1', 0).attr('x2', iw).attr('y1', d => yLeft(d)).attr('y2', d => yLeft(d));
+
+  // X axis
+  g.append('g').attr('class', 'trends-axis')
+    .attr('transform', `translate(0,${ih})`)
+    .call(d3.axisBottom(x).tickFormat(d => String(d)));
+
+  // Left Y axis
+  g.append('g').attr('class', 'trends-axis')
+    .call(d3.axisLeft(yLeft).ticks(4).tickFormat(d => {
+      if (Math.abs(d) >= 1000) return d3.format(',.0f')(d);
+      if (Math.abs(d) >= 10) return d3.format(',.1f')(d);
+      return d3.format('.2f')(d);
+    }));
+
+  // Right Y axis
+  g.append('g').attr('class', 'trends-axis')
+    .attr('transform', `translate(${iw},0)`)
+    .call(d3.axisRight(yRight).ticks(4).tickFormat(d3.format('.2f')));
+
+  // Axis labels
+  g.append('text').attr('class', 'trends-axis-lbl')
+    .attr('x', -4).attr('y', -6).attr('text-anchor', 'start').text('表示値');
+  g.append('text').attr('class', 'trends-axis-lbl')
+    .attr('x', iw + 4).attr('y', -6).attr('text-anchor', 'end').text('ジニ / CV');
+
+  // Line generators (skip null points)
+  const lineGen = yScale => d3.line()
+    .defined(d => d.value != null && isFinite(d.value))
+    .x(d => x(d.year))
+    .y(d => yScale(d.value));
+
+  const giniLine = d3.line()
+    .defined(d => d.gini != null && isFinite(d.gini))
+    .x(d => x(d.year))
+    .y(d => yRight(d.gini));
+
+  const cvLine = d3.line()
+    .defined(d => d.cv != null && isFinite(d.cv))
+    .x(d => x(d.year))
+    .y(d => yRight(d.cv));
+
+  // Value line
+  if (opts.showVal) {
+    const valData = data.map(d => ({ year: d.year, value: d.value }));
+    g.append('path').datum(valData)
+      .attr('class', meta?.lineClass || 'trends-line-value')
+      .attr('d', lineGen(yLeft));
+    g.selectAll('.trends-dot-value').data(valData.filter(d => d.value != null && isFinite(d.value)))
+      .join('circle').attr('class', 'trends-dot trends-dot-value')
+      .attr('cx', d => x(d.year)).attr('cy', d => yLeft(d.value)).attr('r', 3)
+      .attr('fill', meta?.dotColor || 'var(--pri)');
+  }
+  // Gini line
+  if (opts.showGini) {
+    g.append('path').datum(data).attr('class', 'trends-line-gini').attr('d', giniLine);
+    g.selectAll('.trends-dot-gini').data(data.filter(d => d.gini != null && isFinite(d.gini)))
+      .join('circle').attr('class', 'trends-dot trends-dot-gini')
+      .attr('cx', d => x(d.year)).attr('cy', d => yRight(d.gini)).attr('r', 2.5)
+      .attr('fill', '#f59e0b');
+  }
+  // CV line
+  if (opts.showCV) {
+    g.append('path').datum(data).attr('class', 'trends-line-cv').attr('d', cvLine);
+    g.selectAll('.trends-dot-cv').data(data.filter(d => d.cv != null && isFinite(d.cv)))
+      .join('circle').attr('class', 'trends-dot trends-dot-cv')
+      .attr('cx', d => x(d.year)).attr('cy', d => yRight(d.cv)).attr('r', 2.5)
+      .attr('fill', '#16a34a');
+  }
+
+  // Inline legend (top-right inside plot)
+  const legend = g.append('g').attr('class', 'trends-legend')
+    .attr('transform', `translate(${iw - 4}, 4)`);
+  const items = [];
+  if (opts.showVal) items.push({ lbl: '表示値', color: meta?.dotColor || 'var(--pri)', dash: null });
+  if (opts.showGini) items.push({ lbl: 'ジニ', color: '#f59e0b', dash: '5,3' });
+  if (opts.showCV) items.push({ lbl: 'CV', color: '#16a34a', dash: '2,3' });
+  items.forEach((it, i) => {
+    const row = legend.append('g').attr('transform', `translate(0, ${i * 12})`);
+    row.append('line').attr('x1', -28).attr('x2', -6).attr('y1', 0).attr('y2', 0)
+      .attr('stroke', it.color).attr('stroke-width', 2)
+      .attr('stroke-dasharray', it.dash || null);
+    row.append('text').attr('x', -2).attr('y', 3).attr('text-anchor', 'end').text(it.lbl);
+  });
 }
 
 function applyManualScale() {
@@ -1889,6 +2147,23 @@ function downloadCSV() {
   const yr = getYear();
   const codeLabel = '都道府県コード';
   const nameLabel = '都道府県名';
+
+  if (curDisplayMode === 'trends') {
+    const years = (DATA && DATA.ndb && DATA.ndb.years) ? DATA.ndb.years.slice() : [];
+    let csv = `﻿年度,A値,Aジニ,A_CV,B値,Bジニ,B_CV,A/B比値,A/B比ジニ,A/B比CV\n`;
+    const fmtCell = v => (v == null || !isFinite(v)) ? '-' : (Math.abs(v) >= 100 ? v.toFixed(2) : v.toFixed(4));
+    years.forEach(y => {
+      const a = trendsAggregateYear('A', y);
+      const b = trendsAggregateYear('B', y);
+      const r = trendsAggregateYear('ratio', y);
+      csv += `${y},${fmtCell(a.value)},${fmtCell(a.gini)},${fmtCell(a.cv)},${fmtCell(b.value)},${fmtCell(b.gini)},${fmtCell(b.cv)},${fmtCell(r.value)},${fmtCell(r.gini)},${fmtCell(r.cv)}\n`;
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+    a.download = `trends_pref.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    return;
+  }
 
   if (curDisplayMode === 'ratio') {
     // Ratio CSV
