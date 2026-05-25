@@ -16,20 +16,20 @@
   --rad: 10px; --side-w: 340px; --hdr-h: 52px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:13px}
+html{font-size:15px}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.5;overflow:hidden;height:100vh}
 
 /* Layout */
 #app{display:flex;flex-direction:column;height:100vh}
 header{height:var(--hdr-h);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;flex-shrink:0;box-shadow:var(--shadow);z-index:10}
-header h1{font-size:15px;font-weight:600} header h1 b{color:var(--pri)}
-header .sub{margin-left:14px;font-size:11px;color:var(--text-ll)}
+header h1{font-size:17px;font-weight:600} header h1 b{color:var(--pri)}
+header .sub{margin-left:14px;font-size:13px;color:var(--text-ll)}
 .hdr-spacer{flex:1}
 .content{display:flex;flex:1;overflow:hidden}
 
 /* Display mode toggle (A / B / A/B比) */
 .disp-toggle{display:flex;gap:1px;background:var(--border-lt);border-radius:6px;padding:2px;margin-left:16px}
-.disp-btn{padding:4px 12px;border:none;border-radius:4px;background:transparent;color:var(--text-ll);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.disp-btn{padding:4px 12px;border:none;border-radius:4px;background:transparent;color:var(--text-ll);font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
 .disp-btn.active{background:var(--pri);color:#fff}
 .disp-btn.active-b{background:#d97706;color:#fff}
 .disp-btn.active-ratio{background:#7c3aed;color:#fff}
@@ -37,9 +37,9 @@ header .sub{margin-left:14px;font-size:11px;color:var(--text-ll)}
 
 /* Edit target indicator */
 .edit-target-area{display:flex;align-items:center;gap:6px;margin-left:16px}
-.edit-target-area .et-label{font-size:10px;color:var(--text-ll)}
+.edit-target-area .et-label{font-size:12px;color:var(--text-ll)}
 .et-toggle{display:flex;gap:1px;background:var(--border-lt);border-radius:5px;padding:1px}
-.et-btn{padding:3px 10px;border:none;border-radius:4px;background:transparent;color:var(--text-ll);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.et-btn{padding:3px 10px;border:none;border-radius:4px;background:transparent;color:var(--text-ll);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
 .et-btn.active{background:var(--card);color:var(--pri);box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .et-btn:not(.active):hover{color:var(--text-m)}
 
@@ -54,7 +54,7 @@ header .sub{margin-left:14px;font-size:11px;color:var(--text-ll)}
 .resize-handle:hover,.resize-handle.dragging{background:var(--pri-lt)}
 .resize-handle::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:28px;background:var(--border);border-radius:1px}
 .panel{background:var(--bg);border:1px solid var(--border-lt);border-radius:var(--rad);padding:12px}
-.panel h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-l);margin-bottom:8px}
+.panel h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-l);margin-bottom:8px}
 
 /* Config indicator badge */
 .config-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:8px;vertical-align:middle}
@@ -63,22 +63,27 @@ header .sub{margin-left:14px;font-size:11px;color:var(--text-ll)}
 
 /* Toggle buttons */
 .toggle-group{display:flex;gap:2px;background:var(--border-lt);border-radius:6px;padding:2px}
-.toggle-btn{flex:1;padding:5px 8px;border:none;border-radius:5px;background:transparent;color:var(--text-l);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;text-align:center;white-space:nowrap}
+.toggle-btn{flex:1;padding:5px 8px;border:none;border-radius:5px;background:transparent;color:var(--text-l);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;text-align:center;white-space:nowrap}
 .toggle-btn.active{background:var(--card);color:var(--pri);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .toggle-btn:hover:not(.active){color:var(--text-m)}
 
 /* Denominator select */
-.denom-select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;color:var(--text-m);background:var(--card);cursor:pointer;appearance:auto}
+.denom-select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13.5px;color:var(--text-m);background:var(--card);cursor:pointer;appearance:auto}
 .denom-select:disabled{opacity:.5;cursor:not-allowed}
-.denom-note{font-size:10px;color:#92400e;background:var(--warn-lt);border-radius:4px;padding:4px 8px;margin-top:6px;display:none}
+.denom-note{font-size:12px;color:#92400e;background:var(--warn-lt);border-radius:4px;padding:4px 8px;margin-top:6px;display:none}
 
 /* Tab buttons */
 .tab-group{display:flex;gap:0;border-bottom:2px solid var(--border-lt);margin-bottom:0}
-.tab-btn{flex:1;padding:7px 8px;border:none;background:transparent;color:var(--text-ll);font-size:11.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab-btn{flex:1;padding:7px 8px;border:none;background:transparent;color:var(--text-ll);font-size:13.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
 .tab-btn.active{color:var(--pri);border-bottom-color:var(--pri)}
 .tab-btn:hover:not(.active){color:var(--text-m)}
 .tab-content{display:none}
 .tab-content.active{display:block}
+
+/* Disabled section (used when A/B ratio mode locks the numerator editing UI) */
+.disabled-section{pointer-events:none;opacity:.45}
+.ratio-lock-hint{font-size:11px;color:#92400e;background:var(--warn-lt);border-radius:4px;padding:5px 8px;margin-bottom:6px;display:none}
+.ratio-lock-hint.visible{display:block}
 
 /* Hierarchical checkboxes */
 .code-actions{display:flex;gap:5px;margin-bottom:6px}
@@ -112,8 +117,8 @@ header .sub{margin-left:14px;font-size:11px;color:var(--text-ll)}
 .fac-list{max-height:50vh;overflow-y:auto}
 
 /* Year */
-.year-disp{text-align:center;font-size:26px;font-weight:700;color:var(--text);margin-bottom:6px}
-.year-disp span{font-size:12px;font-weight:400;color:var(--text-ll)}
+.year-disp{text-align:center;font-size:30px;font-weight:700;color:var(--text);margin-bottom:6px}
+.year-disp span{font-size:14px;font-weight:400;color:var(--text-ll)}
 input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:5px;background:var(--border);border-radius:3px;outline:none;cursor:pointer}
 input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--pri);border-radius:50%;cursor:pointer;border:2px solid var(--card);box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .year-ticks{display:flex;justify-content:space-between;margin-top:3px;font-size:9px;color:var(--text-ll)}
@@ -123,37 +128,37 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 .year-source .ys-yr{font-weight:600;white-space:nowrap}
 .year-source .ys-yr.ys-diff{color:#b45309}
 .play-row{display:flex;align-items:center;gap:6px;margin-top:8px}
-.play-btn{flex:1;padding:6px 0;border:1px solid var(--pri);border-radius:6px;background:var(--pri-lt);color:var(--pri);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.play-btn{flex:1;padding:6px 0;border:1px solid var(--pri);border-radius:6px;background:var(--pri-lt);color:var(--pri);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
 .play-btn:hover,.play-btn.active{background:var(--pri);color:#fff}
-.speed-sel{padding:6px 5px;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-m);background:var(--card);cursor:pointer}
+.speed-sel{padding:6px 5px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text-m);background:var(--card);cursor:pointer}
 
 /* Map stats overlay */
-.map-stats{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.93);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--rad);padding:12px 16px;box-shadow:var(--shadow);z-index:5;pointer-events:none;font-variant-numeric:tabular-nums}
-.ms-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
+.map-stats{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.93);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--rad);padding:14px 18px;box-shadow:var(--shadow);z-index:5;pointer-events:none;font-variant-numeric:tabular-nums}
+.ms-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px}
 .ms-row{display:flex;gap:22px;align-items:flex-start}
 .ms-row-spread{display:flex;justify-content:space-between;gap:28px}
 .ms-cell{min-width:0}
-.ms-lbl{font-size:10px;color:var(--text-ll);white-space:nowrap}
-.ms-val{font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;line-height:1.3}
-.ms-val-lg{font-size:20px}
-.ms-unit{font-size:10.5px;font-weight:400;color:var(--text-ll);margin-left:2px}
-.ms-sub{font-size:9.5px;color:var(--text-ll);white-space:nowrap}
+.ms-lbl{font-size:12px;color:var(--text-ll);white-space:nowrap}
+.ms-val{font-size:18px;font-weight:700;color:var(--text);white-space:nowrap;line-height:1.3}
+.ms-val-lg{font-size:22px}
+.ms-unit{font-size:12.5px;font-weight:400;color:var(--text-ll);margin-left:2px}
+.ms-sub{font-size:11.5px;color:var(--text-ll);white-space:nowrap}
 .ms-div{border-top:1px solid var(--border-lt);margin:6px 0}
 
 /* Legend hover controls */
 .legend-ctrl{position:absolute;bottom:74px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:8px;padding:10px 14px;box-shadow:var(--shadow);z-index:6;opacity:0;pointer-events:none;transition:opacity .15s}
 .legend-ctrl.visible{opacity:1;pointer-events:auto}
 .lc-row{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
-.lc-lbl{font-size:14px;color:var(--text-ll)}
-.lc-input{width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:15px;text-align:right;color:var(--text);background:var(--card)}
+.lc-lbl{font-size:16px;color:var(--text-ll)}
+.lc-input{width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:17px;text-align:right;color:var(--text);background:var(--card)}
 .lc-input:focus{outline:none;border-color:var(--pri)}
-.lc-sep{color:var(--text-ll);font-size:15px}
-.lc-btn{font-size:14px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text-l);cursor:pointer;white-space:nowrap}
+.lc-sep{color:var(--text-ll);font-size:17px}
+.lc-btn{font-size:16px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text-l);cursor:pointer;white-space:nowrap}
 .lc-btn:hover{background:var(--pri-lt);color:var(--pri);border-color:var(--pri)}
-.lc-badge{font-size:13px;padding:2px 6px;border-radius:3px}
+.lc-badge{font-size:15px;padding:2px 6px;border-radius:3px}
 /* Dual-range slider */
 .lc-slider-row{gap:6px}
-.lc-lbl-sm{font-size:11px;white-space:nowrap}
+.lc-lbl-sm{font-size:13px;white-space:nowrap}
 .lc-slider-wrap{position:relative;flex:1;height:22px;display:flex;align-items:center}
 .lc-slider-track{position:absolute;height:5px;border-radius:3px;background:var(--pri);opacity:.35;pointer-events:none;top:50%;transform:translateY(-50%)}
 .lc-range{-webkit-appearance:none;appearance:none;position:absolute;width:100%;height:5px;background:transparent;pointer-events:none;outline:none;top:50%;transform:translateY(-50%);margin:0}
@@ -170,13 +175,14 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 .lc-pal-swatch:hover{border-color:var(--text-m)}
 .lc-pal-swatch.active{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri-lt)}
 .lc-pal-swatch.custom-sw{background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red)}
+.lc-pal-divider{display:inline-block;width:1px;align-self:stretch;border-left:1px solid var(--border);margin:0 4px;padding-left:0}
 .lc-custom-wrap{display:flex;gap:4px;align-items:center;margin-left:2px}
 .lc-color-pick{width:22px;height:22px;border:1px solid var(--border);border-radius:4px;padding:0;cursor:pointer;background:none}
 .lc-color-pick::-webkit-color-swatch-wrapper{padding:1px}
 .lc-color-pick::-webkit-color-swatch{border:none;border-radius:2px}
 
 /* Download */
-.dl-btn{width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text-m);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+.dl-btn{width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text-m);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
 .dl-btn:hover{background:var(--text);color:#fff;border-color:var(--text)}
 
 /* Map */
@@ -188,15 +194,15 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 .zoom-btn:hover{background:var(--card);color:var(--text)}
 .region-path{stroke:#fff;stroke-width:.6;transition:fill .3s,stroke .1s,stroke-width .1s;vector-effect:non-scaling-stroke}
 .region-path.hovered{stroke:var(--text);stroke-width:1.8;paint-order:fill}
-.legend-title{font-size:15px;fill:var(--text-l)}
-.legend-axis text{font-size:14px;fill:var(--text-ll)}
+.legend-title{font-size:17px;fill:var(--text-l)}
+.legend-axis text{font-size:16px;fill:var(--text-ll)}
 .legend-axis line,.legend-axis path{stroke:var(--text-ll);stroke-width:.5}
 
 /* Tooltip */
 .tooltip{position:absolute;pointer-events:none;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow-lg);opacity:0;transition:opacity .12s;z-index:100;min-width:180px;max-width:360px}
 .tooltip.visible{opacity:1}
-.tt-pref{font-size:14px;font-weight:700;margin-bottom:5px}
-.tt-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;padding:1.5px 0;gap:10px}
+.tt-pref{font-size:16px;font-weight:700;margin-bottom:5px}
+.tt-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;padding:1.5px 0;gap:10px}
 .tt-lbl{color:var(--text-l);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 .tt-val{font-weight:600;color:var(--text);text-align:right;white-space:nowrap}
 .tt-div{border-top:1px solid var(--border-lt);margin:4px 0}
@@ -205,16 +211,16 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 .tt-section{font-size:10px;font-weight:600;color:var(--text-l);margin-top:4px;margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em}
 .yr-badge{display:inline-block;font-size:9px;font-weight:600;color:#b45309;background:#fef3c7;border-radius:3px;padding:0 4px;margin-left:4px;vertical-align:baseline;line-height:1.4}
 .empty-st{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.empty-st-text{font-size:13px;color:var(--text-ll);background:var(--card);padding:10px 18px;border-radius:8px;border:1px dashed var(--border)}
+.empty-st-text{font-size:15px;color:var(--text-ll);background:var(--card);padding:10px 18px;border-radius:8px;border:1px dashed var(--border)}
 
 
 /* Disclaimer */
 .disclaimer-overlay{position:fixed;inset:0;z-index:2000;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;transition:opacity .3s}
 .disclaimer-overlay.hidden{opacity:0;pointer-events:none}
 .disclaimer-box{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:600px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
-.disclaimer-box h2{font-size:16px;font-weight:700;color:var(--text);padding:20px 24px 0;flex-shrink:0}
-.disclaimer-body{overflow-y:auto;padding:16px 24px;font-size:12.5px;line-height:1.8;color:var(--text-m);flex:1;min-height:0}
-.disclaimer-body h3{font-size:13px;font-weight:700;color:var(--text);margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border-lt)}
+.disclaimer-box h2{font-size:18px;font-weight:700;color:var(--text);padding:20px 24px 0;flex-shrink:0}
+.disclaimer-body{overflow-y:auto;padding:16px 24px;font-size:14.5px;line-height:1.8;color:var(--text-m);flex:1;min-height:0}
+.disclaimer-body h3{font-size:15px;font-weight:700;color:var(--text);margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border-lt)}
 .disclaimer-body h3:first-child{margin-top:0}
 .disclaimer-body a{color:var(--pri-h);text-decoration:none;word-break:break-all}
 .disclaimer-body a:hover{text-decoration:underline}
@@ -222,19 +228,25 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 .disclaimer-body ul li{padding:2px 0;padding-left:1em;text-indent:-1em}
 .disclaimer-body ul li::before{content:'・'}
 .disclaimer-footer{flex-shrink:0;padding:14px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg)}
-.disclaimer-check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-ll);cursor:not-allowed;user-select:none}
+.disclaimer-check{display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--text-ll);cursor:not-allowed;user-select:none}
 .disclaimer-check.enabled{color:var(--text-m);cursor:pointer}
 .disclaimer-check input{width:16px;height:16px;accent-color:var(--pri);cursor:inherit}
-.disclaimer-btn{padding:10px 28px;border:none;border-radius:8px;background:var(--border);color:var(--text-ll);font-size:13px;font-weight:600;cursor:not-allowed;transition:all .15s}
+.disclaimer-btn{padding:10px 28px;border:none;border-radius:8px;background:var(--border);color:var(--text-ll);font-size:15px;font-weight:600;cursor:not-allowed;transition:all .15s}
 .disclaimer-btn:not(:disabled){background:var(--pri);color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(14,165,233,.3)}
 .disclaimer-btn:not(:disabled):hover{background:var(--pri-h)}
+/* Reshow mode: hide the gate (checkbox + 利用開始) and show a single OK button */
+body.disclaimer-reshow #disclaimerCheckLabel{display:none}
+body.disclaimer-reshow #disclaimerBtn{display:none}
+body.disclaimer-reshow .disclaimer-ok-btn{display:inline-block;background:var(--pri);color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(14,165,233,.3)}
+body.disclaimer-reshow .disclaimer-ok-btn:hover{background:var(--pri-h)}
+body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
 
 /* Loading */
 .loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;transition:opacity .3s}
 .loading.hidden{opacity:0;pointer-events:none}
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--pri);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.load-text{margin-top:10px;color:var(--text-ll);font-size:12px;text-align:center}
+.load-text{margin-top:10px;color:var(--text-ll);font-size:14px;text-align:center}
 </style>
 </head>
 <body>
@@ -278,6 +290,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
     <div class="disclaimer-footer">
       <label class="disclaimer-check" id="disclaimerCheckLabel"><input type="checkbox" id="disclaimerCheck" disabled> 上記の内容を確認しました</label>
       <button class="disclaimer-btn" id="disclaimerBtn" disabled onclick="acceptDisclaimer()">利用開始</button>
+      <button class="disclaimer-btn disclaimer-ok-btn" style="display:none" onclick="closeReshowDisclaimer()">OK</button>
     </div>
   </div>
 </div>
@@ -321,26 +334,29 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
         </select>
         <div class="denom-note" id="denomNote"></div>
       </div>
-      <div class="panel" style="padding-bottom:0">
-        <div style="display:flex;align-items:center;margin-bottom:4px">
-          <span class="config-badge" id="tabBadge" style="display:none">A</span>
+      <div class="ratio-lock-hint" id="ratioLockHint" title="A・B比 モードでは A/B 各々の設定で参照されます">A・B比 モードでは A/B 各々の設定で参照されます</div>
+      <div id="numeratorSection">
+        <div class="panel" style="padding-bottom:0">
+          <div style="display:flex;align-items:center;margin-bottom:4px">
+            <span class="config-badge" id="tabBadge" style="display:none">A</span>
+          </div>
+          <div class="tab-group">
+            <button class="tab-btn active" data-mode="ndb" onclick="setDataMode('ndb')">NDB算定</button>
+            <button class="tab-btn" data-mode="facility" onclick="setDataMode('facility')">施設指標</button>
+          </div>
         </div>
-        <div class="tab-group">
-          <button class="tab-btn active" data-mode="ndb" onclick="setDataMode('ndb')">NDB算定</button>
-          <button class="tab-btn" data-mode="facility" onclick="setDataMode('facility')">施設指標</button>
+        <div class="panel tab-content active" id="ndbPanel" style="border-top-left-radius:0;border-top-right-radius:0;margin-top:10px">
+          <div class="code-actions">
+            <button onclick="toggleAll(true)">すべて選択</button>
+            <button onclick="toggleAll(false)">すべて解除</button>
+            <button onclick="expandAll(true)">展開</button>
+            <button onclick="expandAll(false)">折畳</button>
+          </div>
+          <div class="proc-list" id="procList"></div>
         </div>
-      </div>
-      <div class="panel tab-content active" id="ndbPanel" style="border-top-left-radius:0;border-top-right-radius:0">
-        <div class="code-actions">
-          <button onclick="toggleAll(true)">すべて選択</button>
-          <button onclick="toggleAll(false)">すべて解除</button>
-          <button onclick="expandAll(true)">展開</button>
-          <button onclick="expandAll(false)">折畳</button>
+        <div class="panel tab-content" id="facilityPanel" style="border-top-left-radius:0;border-top-right-radius:0;margin-top:10px">
+          <div class="fac-list" id="facList"></div>
         </div>
-        <div class="proc-list" id="procList"></div>
-      </div>
-      <div class="panel tab-content" id="facilityPanel" style="border-top-left-radius:0;border-top-right-radius:0">
-        <div class="fac-list" id="facList"></div>
       </div>
       <div class="panel">
         <h3>年度</h3>
@@ -356,6 +372,10 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
       <div class="panel">
         <h3>データ出力</h3>
         <button class="dl-btn" onclick="downloadCSV()">CSV ダウンロード</button>
+      </div>
+      <div class="panel">
+        <h3>ご利用にあたって</h3>
+        <button class="dl-btn" onclick="reshowDisclaimer()">免責事項を再表示</button>
       </div>
       <div style="font-size:9px;color:var(--text-ll);line-height:1.6;padding:0 4px">
         データ: 厚生労働省 NDBオープンデータ / 医療施設調査 / 医師・歯科医師・薬剤師統計 / 総務省 人口推計<br>
@@ -504,8 +524,11 @@ let DATA = null, GEO_PREF = null;
 let MGEO_PREF = null;
 let animTimer = null, lcTimer = null, resizeT;
 let scaleDomain = null, scaleIsAuto = true;
-let curSeqPalette = null, curDivPalette = null;
-let customSeqStops = null, customDivStops = null;
+/* Unified palette state: curPalette is a key from SEQ_PALETTES or DIV_PALETTES, or 'custom'.
+   customStops is [startColor, endColor] for the custom (sequential) palette. */
+let curPalette = null;
+let customStops = null;
+let userPickedPalette = false; // true once the user explicitly chose a palette
 let sliderRAF = null;
 let statsPos = null;
 let regionPaths = {};
@@ -548,34 +571,116 @@ function setupDisclaimer() {
 function acceptDisclaimer() {
   document.getElementById('disclaimerOverlay').classList.add('hidden');
 }
+function reshowDisclaimer() {
+  document.body.classList.add('disclaimer-reshow');
+  document.getElementById('disclaimerOverlay').classList.remove('hidden');
+  // Scroll the body back to top for easier re-reading
+  const body = document.getElementById('disclaimerBody');
+  if (body) body.scrollTop = 0;
+}
+function closeReshowDisclaimer() {
+  document.getElementById('disclaimerOverlay').classList.add('hidden');
+  document.body.classList.remove('disclaimer-reshow');
+}
 
 /* ================================================================ */
 /* UTILITY                                                           */
 /* ================================================================ */
-function getSeqStops(mode) {
-  if (customSeqStops) {
-    return d3.range(5).map(i => d3.interpolateRgb.gamma(2.2)(customSeqStops[0], customSeqStops[1])(i / 4));
-  }
-  if (curSeqPalette && SEQ_PALETTES[curSeqPalette]) return SEQ_PALETTES[curSeqPalette].stops;
-  return (mode || curDisplayMode) === 'B' ? CSTOPS_B : CSTOPS_A;
+/* Palette helpers: any of the 11 palettes (7 sequential + 4 diverging) may be active
+   in any display mode. The palette type drives how the domain is mapped. */
+function getDefaultPaletteKey() {
+  if (curDisplayMode === 'ratio') return 'blRd';
+  if (curDisplayMode === 'B') return 'ambers';
+  return 'blues';
 }
-function getDivergingStops() {
-  if (customDivStops) {
-    const nI = d3.interpolateRgb.gamma(2.2)(customDivStops.neg, customDivStops.mid);
-    const pI = d3.interpolateRgb.gamma(2.2)(customDivStops.mid, customDivStops.pos);
-    return [nI(0), nI(0.33), nI(0.67), customDivStops.mid, pI(0.33), pI(0.67), pI(1)];
+function getActivePaletteKey() {
+  if (customStops) return 'custom';
+  if (curPalette && (SEQ_PALETTES[curPalette] || DIV_PALETTES[curPalette])) return curPalette;
+  return getDefaultPaletteKey();
+}
+function isPaletteDiverging(key) {
+  return !!DIV_PALETTES[key];
+}
+function getCustomSeqStops5() {
+  const interp = d3.interpolateRgb.gamma(2.2)(customStops[0], customStops[1]);
+  return d3.range(5).map(i => interp(i / 4));
+}
+/* Build a d3 color scale for the given domain using the currently active palette.
+   - Sequential palette: simple linear mapping domain[0] -> domain[1].
+   - Diverging palette: mid color anchored at 1.0 in ratio mode (geometric center on log scale),
+     or at the arithmetic center of domain in A/B/SCR modes. */
+function makeColorScale(dom) {
+  const key = getActivePaletteKey();
+  if (key === 'custom') {
+    return buildScale(dom, getCustomSeqStops5());
   }
-  const pal = (curDivPalette && DIV_PALETTES[curDivPalette]) || DIV_PALETTES.blRd;
-  return [...pal.neg, pal.mid, ...pal.pos];
+  if (isPaletteDiverging(key)) {
+    const pal = DIV_PALETTES[key];
+    const stops = [...pal.neg, pal.mid, ...pal.pos]; // length 7
+    if (curDisplayMode === 'ratio') {
+      return buildRatioDivergingScale(dom, stops);
+    }
+    // Diverging mapping for A/B/SCR mode: center mid at arithmetic midpoint
+    const mid = (dom[0] + dom[1]) / 2;
+    const half = (dom[1] - dom[0]) / 2 || 1;
+    const domStops = [
+      dom[0], dom[0] + half / 3, dom[0] + 2 * half / 3, mid,
+      mid + half / 3, mid + 2 * half / 3, dom[1]
+    ];
+    return d3.scaleLinear().domain(domStops).range(stops)
+      .interpolate(d3.interpolateRgb.gamma(2.2)).clamp(true);
+  }
+  // Sequential
+  const pal = SEQ_PALETTES[key];
+  return buildScale(dom, pal.stops);
 }
 function buildScale(dom, stops) {
   return d3.scaleLinear()
     .domain(d3.range(stops.length).map(i => dom[0] + i/(stops.length-1)*(dom[1]-dom[0])))
     .range(stops).interpolate(d3.interpolateRgb.gamma(2.2)).clamp(true);
 }
-function makeCS(dom, mode) { return buildScale(dom, getSeqStops(mode)); }
-function makeRatioCS(dom) { return buildScale(dom, getDivergingStops()); }
-function makeScrCS(dom) { return buildScale(dom, getDivergingStops()); }
+/* Build a diverging scale for ratio mode anchored at 1.0 on log2 axis. */
+function buildRatioDivergingScale(dom, stops) {
+  const lo = Math.max(1e-9, dom[0]);
+  const hi = Math.max(lo * 1.0001, dom[1]);
+  const lLo = Math.log2(lo), lHi = Math.log2(hi);
+  // Ensure 1.0 (log=0) is in [lLo, lHi]; if not, fall back to linear
+  if (lLo >= 0 || lHi <= 0) {
+    return buildScale(dom, stops);
+  }
+  // Build 7 stops: 3 in negative half (lo..1), midpoint at 1, 3 in positive half (1..hi).
+  // Negative half evenly spaced on log scale: lLo, 2/3*lLo, 1/3*lLo, 0 (=log 1)
+  // Positive half: 0, 1/3*lHi, 2/3*lHi, lHi
+  const domStops = [
+    Math.pow(2, lLo),
+    Math.pow(2, lLo * (2/3)),
+    Math.pow(2, lLo * (1/3)),
+    1,
+    Math.pow(2, lHi * (1/3)),
+    Math.pow(2, lHi * (2/3)),
+    Math.pow(2, lHi)
+  ];
+  return d3.scaleLinear().domain(domStops).range(stops)
+    .interpolate(d3.interpolateRgb.gamma(2.2)).clamp(true);
+}
+function makeCS(dom, mode) {
+  // Delegated to unified makeColorScale (handles seq / diverging / ratio anchoring).
+  return makeColorScale(dom);
+}
+function makeRatioCS(dom) {
+  const key = getActivePaletteKey();
+  if (key === 'custom') return buildScale(dom, getCustomSeqStops5());
+  if (isPaletteDiverging(key)) {
+    const pal = DIV_PALETTES[key];
+    return buildRatioDivergingScale(dom, [...pal.neg, pal.mid, ...pal.pos]);
+  }
+  // Sequential palette in ratio mode: simple linear
+  return buildScale(dom, SEQ_PALETTES[key].stops);
+}
+function makeScrCS(dom) {
+  // SCR is naturally diverging around 100; reuse makeColorScale logic
+  return makeColorScale(dom);
+}
 function calcGini(sorted) {
   const n = sorted.length; if (n === 0) return 0;
   const mu = sorted.reduce((s,v) => s+v, 0) / n; if (mu === 0) return 0;
@@ -947,11 +1052,27 @@ function setDisplayMode(mode) {
   }
   // ratio mode: keep current edit target
 
+  // Reset default palette on mode change unless user has explicitly chosen one
+  if (!userPickedPalette) {
+    curPalette = null; // forces getActivePaletteKey() to return new default
+    customStops = null;
+  }
+
   updateDenomUI();
   updateConfigBadges();
   buildPaletteUI();
+  applyRatioLockUI();
   scaleDomain = null;
   updateMap(true);
+}
+
+function applyRatioLockUI() {
+  const section = document.getElementById('numeratorSection');
+  const hint = document.getElementById('ratioLockHint');
+  if (!section) return;
+  const lock = curDisplayMode === 'ratio';
+  section.classList.toggle('disabled-section', lock);
+  if (hint) hint.classList.toggle('visible', lock);
 }
 
 function setEditTarget(target) {
@@ -1412,18 +1533,10 @@ function setupScaleSliders() {
   });
 }
 
-/* Palette UI */
+/* Palette UI: unified — all 11 palettes (7 sequential + 4 diverging) are selectable
+   in every display mode. */
 function isDivergingMode() {
   return curDisplayMode === 'ratio' || getEffectiveDenom() === 'scr';
-}
-function getActiveSeqKey() {
-  if (customSeqStops) return 'custom';
-  if (curSeqPalette) return curSeqPalette;
-  return curDisplayMode === 'B' ? 'ambers' : 'blues';
-}
-function getActiveDivKey() {
-  if (customDivStops) return 'custom';
-  return curDivPalette || 'blRd';
 }
 function makeSwatch(stops, key, active) {
   const el = document.createElement('div');
@@ -1437,43 +1550,47 @@ function buildPaletteUI() {
   const container = document.getElementById('palChoices');
   if (!container) return;
   container.innerHTML = '';
-  const isDiv = isDivergingMode();
-  if (isDiv) {
-    Object.entries(DIV_PALETTES).forEach(([key, pal]) => {
-      const allS = [...pal.neg, pal.mid, ...pal.pos];
-      const sw = makeSwatch(allS, key, key === getActiveDivKey());
-      sw.title = pal.name;
-      sw.onclick = () => selectPalette(key, false);
-      container.appendChild(sw);
-    });
-  } else {
-    Object.entries(SEQ_PALETTES).forEach(([key, pal]) => {
-      const sw = makeSwatch(pal.stops, key, key === getActiveSeqKey());
-      sw.title = pal.name;
-      sw.onclick = () => selectPalette(key, false);
-      container.appendChild(sw);
-    });
-  }
+  const activeKey = getActivePaletteKey();
+  // Sequential palettes first
+  Object.entries(SEQ_PALETTES).forEach(([key, pal]) => {
+    const sw = makeSwatch(pal.stops, key, key === activeKey);
+    sw.title = pal.name + ' (逐次)';
+    sw.onclick = () => selectPalette(key, false);
+    container.appendChild(sw);
+  });
+  // Divider between sequential and diverging
+  const divider = document.createElement('span');
+  divider.className = 'lc-pal-divider';
+  divider.title = '逐次 | 発散';
+  container.appendChild(divider);
+  // Diverging palettes
+  Object.entries(DIV_PALETTES).forEach(([key, pal]) => {
+    const allS = [...pal.neg, pal.mid, ...pal.pos];
+    const sw = makeSwatch(allS, key, key === activeKey);
+    sw.title = pal.name + ' (発散)';
+    sw.onclick = () => selectPalette(key, false);
+    container.appendChild(sw);
+  });
   // Custom swatch
   const csw = document.createElement('div');
-  csw.className = 'lc-pal-swatch custom-sw' + ((isDiv ? !!customDivStops : !!customSeqStops) ? ' active' : '');
+  csw.className = 'lc-pal-swatch custom-sw' + (activeKey === 'custom' ? ' active' : '');
   csw.title = 'カスタム';
   csw.onclick = () => selectPalette('custom', true);
   container.appendChild(csw);
   document.getElementById('customColorWrap').style.display =
-    (isDiv ? !!customDivStops : !!customSeqStops) ? 'flex' : 'none';
+    (activeKey === 'custom') ? 'flex' : 'none';
 }
 function selectPalette(key, isCustom) {
-  const isDiv = isDivergingMode();
   if (isCustom) {
+    customStops = customStops || ['#f0f9ff', '#075985'];
+    curPalette = 'custom';
     document.getElementById('customColorWrap').style.display = 'flex';
-    if (isDiv) { customDivStops = customDivStops || { neg: '#1e40af', mid: '#fafafa', pos: '#991b1b' }; curDivPalette = null; }
-    else { customSeqStops = customSeqStops || ['#f0f9ff', '#075985']; curSeqPalette = null; }
   } else {
+    customStops = null;
+    curPalette = key;
     document.getElementById('customColorWrap').style.display = 'none';
-    if (isDiv) { curDivPalette = key; customDivStops = null; }
-    else { curSeqPalette = key; customSeqStops = null; }
   }
+  userPickedPalette = true;
   document.querySelectorAll('#palChoices .lc-pal-swatch').forEach(s => {
     s.classList.toggle('active', isCustom ? s.classList.contains('custom-sw') : s.dataset.pal === key);
   });
@@ -1482,8 +1599,9 @@ function selectPalette(key, isCustom) {
 function onCustomColorChange() {
   const c1 = document.getElementById('customColorStart').value;
   const c2 = document.getElementById('customColorEnd').value;
-  if (isDivergingMode()) { customDivStops = { neg: c1, mid: '#fafafa', pos: c2 }; }
-  else { customSeqStops = [c1, c2]; }
+  customStops = [c1, c2];
+  curPalette = 'custom';
+  userPickedPalette = true;
   updateMap(false);
 }
 
@@ -1908,6 +2026,7 @@ async function init() {
     GEO_PREF = await gr.json();
     DATA = await dr.json();
     reclassifyData(); buildLookup(); setupControls(); setupResize(); setupLegendCtrl();
+    applyRatioLockUI();
     initMap(); updateMap(true);
     document.getElementById('loading').classList.add('hidden');
   } catch(e) {
