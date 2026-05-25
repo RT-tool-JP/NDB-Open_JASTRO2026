@@ -551,11 +551,12 @@ let DATA = null, GEO_PREF = null;
 let MGEO_PREF = null;
 let animTimer = null, lcTimer = null, resizeT;
 let scaleDomain = null, scaleIsAuto = true;
-/* Unified palette state: curPalette is a key from SEQ_PALETTES or DIV_PALETTES, or 'custom'.
-   customStops is [startColor, endColor] for the custom (sequential) palette. */
-let curPalette = null;
-let customStops = null;
-let userPickedPalette = false; // true once the user explicitly chose a palette
+/* Per-mode palette state: each display mode (A/B/ratio) keeps its own selection so
+   that switching modes does not reset the user's choice in another mode.
+   trends mode reuses ratio's palette (trends has no map; this is only for completeness). */
+let paletteByMode = { A: null, B: null, ratio: null };
+let customStopsByMode = { A: null, B: null, ratio: null };
+let userPickedByMode = { A: false, B: false, ratio: false };
 let sliderRAF = null;
 let statsPos = null;
 let regionPaths = {};
@@ -617,21 +618,29 @@ function closeReshowDisclaimer() {
 /* ================================================================ */
 /* Palette helpers: any of the 11 palettes (7 sequential + 4 diverging) may be active
    in any display mode. The palette type drives how the domain is mapped. */
+function getPaletteModeKey() {
+  // trends has no map; fall back to ratio's slot for any code path that asks
+  return curDisplayMode === 'trends' ? 'ratio' : curDisplayMode;
+}
 function getDefaultPaletteKey() {
-  if (curDisplayMode === 'ratio') return 'blRd';
-  if (curDisplayMode === 'B') return 'ambers';
+  const m = getPaletteModeKey();
+  if (m === 'ratio') return 'blRd';
+  if (m === 'B') return 'ambers';
   return 'blues';
 }
 function getActivePaletteKey() {
-  if (customStops) return 'custom';
-  if (curPalette && (SEQ_PALETTES[curPalette] || DIV_PALETTES[curPalette])) return curPalette;
+  const m = getPaletteModeKey();
+  if (customStopsByMode[m]) return 'custom';
+  const k = paletteByMode[m];
+  if (k && (SEQ_PALETTES[k] || DIV_PALETTES[k])) return k;
   return getDefaultPaletteKey();
 }
 function isPaletteDiverging(key) {
   return !!DIV_PALETTES[key];
 }
 function getCustomSeqStops5() {
-  const interp = d3.interpolateRgb.gamma(2.2)(customStops[0], customStops[1]);
+  const stops = customStopsByMode[getPaletteModeKey()];
+  const interp = d3.interpolateRgb.gamma(2.2)(stops[0], stops[1]);
   return d3.range(5).map(i => interp(i / 4));
 }
 /* Build a d3 color scale for the given domain using the currently active palette.
@@ -1076,11 +1085,8 @@ function setDisplayMode(mode) {
     loadConfigToUI(mode === 'A' ? configA : configB);
   }
 
-  // Reset default palette on mode change unless user has explicitly chosen one
-  if (!userPickedPalette) {
-    curPalette = null; // forces getActivePaletteKey() to return new default
-    customStops = null;
-  }
+  // Palette is now per-mode (paletteByMode); no reset needed on mode change.
+  // Each mode keeps whatever the user (or default) selected for it.
 
   // Toggle main-area visibility for trends mode
   applyTrendsLayout();
@@ -1798,6 +1804,15 @@ function buildPaletteUI() {
   if (!container) return;
   container.innerHTML = '';
   const activeKey = getActivePaletteKey();
+  // Sync the custom color pickers to the current mode's stored stops (if any)
+  const m = getPaletteModeKey();
+  const stored = customStopsByMode[m];
+  if (stored) {
+    const s = document.getElementById('customColorStart');
+    const e = document.getElementById('customColorEnd');
+    if (s) s.value = stored[0];
+    if (e) e.value = stored[1];
+  }
   // Sequential palettes first
   Object.entries(SEQ_PALETTES).forEach(([key, pal]) => {
     const sw = makeSwatch(pal.stops, key, key === activeKey);
@@ -1828,27 +1843,29 @@ function buildPaletteUI() {
     (activeKey === 'custom') ? 'flex' : 'none';
 }
 function selectPalette(key, isCustom) {
+  const m = getPaletteModeKey();
   if (isCustom) {
-    customStops = customStops || ['#f0f9ff', '#075985'];
-    curPalette = 'custom';
+    customStopsByMode[m] = customStopsByMode[m] || ['#f0f9ff', '#075985'];
+    paletteByMode[m] = 'custom';
     document.getElementById('customColorWrap').style.display = 'flex';
   } else {
-    customStops = null;
-    curPalette = key;
+    customStopsByMode[m] = null;
+    paletteByMode[m] = key;
     document.getElementById('customColorWrap').style.display = 'none';
   }
-  userPickedPalette = true;
+  userPickedByMode[m] = true;
   document.querySelectorAll('#palChoices .lc-pal-swatch').forEach(s => {
     s.classList.toggle('active', isCustom ? s.classList.contains('custom-sw') : s.dataset.pal === key);
   });
   updateMap(false);
 }
 function onCustomColorChange() {
+  const m = getPaletteModeKey();
   const c1 = document.getElementById('customColorStart').value;
   const c2 = document.getElementById('customColorEnd').value;
-  customStops = [c1, c2];
-  curPalette = 'custom';
-  userPickedPalette = true;
+  customStopsByMode[m] = [c1, c2];
+  paletteByMode[m] = 'custom';
+  userPickedByMode[m] = true;
   updateMap(false);
 }
 
