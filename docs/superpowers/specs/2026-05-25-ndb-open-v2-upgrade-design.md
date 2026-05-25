@@ -156,13 +156,13 @@ NDB の SMA セクション、性年齢別セクションは**処理を残す**�
 | **(c) 変数宣言** | `GEO_SMA`, `MGEO_SMA`, `curGeoUnit` グローバル変数、`DATA.sma.regions` 経由のリージョン一覧 | グローバル変数定義を削除。`curGeoUnit` 参照箇所は (e) の規則で除去 |
 | **(d) 分岐式** | `curGeoUnit === 'pref' ? A : B` 形、`getFacilitySource()`, `getDenomSource()`, `getRegionCodes()`, `getRegionName()` などのアクセサ | 三項演算子は A 側のみ残す形に簡約。例: `curGeoUnit === 'pref' ? DATA.population.total?.pref : DATA.population.total?.sma` → `DATA.population.total?.pref` |
 | **(e) 文言・メッセージ** | `'SCR は都道府県のみ'` 等のエラーメッセージ、CSV ファイル名生成 `ratio_${curGeoUnit}_${yr}.csv` | エラー文面は不要なので削除。CSV ファイル名は `ratio_pref_${yr}.csv` リテラルに置換 |
-| **(f) CSS** | `.region-path.sma-path`, `.region-path.sma-path.hovered` | 未使用になるが残しても実害なし。CSS だけは残置可（HTML/JS で `sma-path` クラスが付かなければ無効化される）|
+| **(f) CSS** | `.region-path.sma-path`, `.region-path.sma-path.hovered` | **削除する**（テストの grep 0 件基準と整合させるため） |
 
 #### 4.4.3 機能別影響
 
 | 機能 | SMA 削除後の挙動 |
 |---|---|
-| 施設指標定義 `FACILITY_GROUPS` | 各 item の `geo: ['pref','sma']` → 配列ごと削除可、または `['pref']` に統一。`facItem` の disabled 表示判定 (`!item.geo.includes(curGeoUnit)`) も無効化 |
+| 施設指標定義 `FACILITY_GROUPS` | 各 item の `geo` プロパティ自体を**削除**（全 item が pref のみ前提となるため）。`facItem` の disabled 表示判定も `disabled` 条件ごと削除 |
 | 分母 `per_nurse`/`per_rad_tech` | `curGeoUnit === 'pref' ? curDenom : 'raw'` → `curDenom` に簡約 |
 | 分母 `per_linac` | SMA 限定の `raw` フォールバックを削除し、`DATA.facility.radiation.pref?.rt_linac_units` の有無だけで判定 |
 | ズーム | 試験版の zoom 設定をそのまま維持。SMA より粒度が荒くなるので最大倍率は実用上問題なし |
@@ -197,7 +197,7 @@ R 側:
 - 生成 JSON のサイズと主要キーが揃っていることを確認: `ndb.codes`, `ndb.counts.pref`, `facility.hospitals.pref`, `physician.pref`, `rad_doctors.pref`, `population.total.pref`, `prefectures`
 
 Web 側（機械的チェック、SMA 削除完了の客観基準）:
-- `grep -nE 'sma|SMA|GeoUnit|curGeoUnit' index.html` → ヒット 0 件（`.sma-path` CSS 残置を許容する場合は 2 件以下）
+- `grep -nE 'sma|SMA|GeoUnit|curGeoUnit' index.html` → ヒット 0 件
 - `grep -nE 'sma\.geojson|DATA\.sma|GEO_SMA|MGEO_SMA' index.html` → 0 件
 - ブラウザ DevTools コンソールで `sma`/`undefined` 関連エラー・警告 0 件
 
