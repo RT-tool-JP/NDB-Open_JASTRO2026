@@ -1119,21 +1119,25 @@ function applyTrendsLayout() {
 
 function applyDisplayLockUI() {
   const section = document.getElementById('numeratorSection');
+  const denomPanel = document.getElementById('denomPanel');
   const hint = document.getElementById('ratioLockHint');
-  if (!section) return;
-  // Lock the sidebar (numerator section) for both ratio and trends modes:
+  // Numerator section (算定項目/施設指標) is locked in ratio and trends modes:
   // those modes display A and B together, so editing either side via the
   // single sidebar would be ambiguous. Switch to 表示A/B to edit.
-  const lock = curDisplayMode === 'ratio' || curDisplayMode === 'trends';
-  section.classList.toggle('disabled-section', lock);
+  const numLock = curDisplayMode === 'ratio' || curDisplayMode === 'trends';
+  if (section) section.classList.toggle('disabled-section', numLock);
+  // 分母 (表示値) is shared across all modes — only editable in 表示A mode.
+  // In 表示B / A・B比 / 年次推移, the denom inherits whatever 表示A is using.
+  const denomLock = curDisplayMode !== 'A';
+  if (denomPanel) denomPanel.classList.toggle('disabled-section', denomLock);
   if (hint) {
-    hint.classList.toggle('visible', lock);
+    hint.classList.toggle('visible', numLock);
     if (curDisplayMode === 'ratio') {
       hint.textContent = 'A・B比 モードでは A/B 各々の設定で参照されます';
-      hint.title = 'A・B比 モードでは A/B 各々の設定で参照されます';
+      hint.title = hint.textContent;
     } else if (curDisplayMode === 'trends') {
       hint.textContent = '年次推移 モードでは A/B 各々の設定で表示されます';
-      hint.title = '年次推移 モードでは A/B 各々の設定で表示されます';
+      hint.title = hint.textContent;
     }
   }
 }
