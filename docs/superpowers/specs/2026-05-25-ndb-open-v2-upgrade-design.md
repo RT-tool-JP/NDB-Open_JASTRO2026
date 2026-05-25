@@ -87,18 +87,19 @@ index.html ← fetch('data/dashboard_data.json'), fetch('data/prefectures.geojso
 
 ### 4.1 ディレクトリ移行
 
-| 現状 | 移行先 | 手段 |
-|---|---|---|
-| `index.html`（v1.00） | `_legacy/index.html` | git mv |
-| `rawdata/` | `_legacy/rawdata/` | git mv |
-| `scripts/` | `_legacy/scripts/` | git mv |
-| `data/ndb_radiation.json` | `_legacy/data/ndb_radiation.json` | git mv |
-| `data/prefectures.geojson` | （上書き予定） | scripts/10 で再生成 |
-| `output/` | `_legacy/output/` | git mv |
-| `20260316_試験版/data/` 配下 | `rawdata_dl/` | 通常 mv（git 履歴外） |
-| `20260316_試験版/*.R` | `scripts/` にコピー後改修 | cp |
-| `20260316_試験版/webapp/index.html` | `index.html` にコピー後改修 | cp |
-| `20260316_試験版/` 本体 | 残置（参照用） | そのまま |
+| 現状 | 移行先 | 手段 | 備考 |
+|---|---|---|---|
+| `index.html`（v1.00） | `_legacy/index.html` | git mv | 履歴保持 |
+| `rawdata/` | `_legacy/rawdata/` | git mv | 履歴保持 |
+| `scripts/` | `_legacy/scripts/` | git mv | 履歴保持 |
+| `data/ndb_radiation.json` | `_legacy/data/ndb_radiation.json` | git mv | 履歴保持 |
+| `data/prefectures.geojson` | （上書き予定） | scripts/10 で再生成 | |
+| `output/` | `_legacy/output/` | git mv | gitignore に追加 |
+| `20260316_試験版/data/` 配下 | `rawdata_dl/` | 通常 mv | 生データは git 履歴に入れない方針のため git 追跡外で移動 |
+| `20260316_試験版/01〜05, 10_*.R` | `scripts/` にコピー後改修 | cp | 試験版にも原本を残す |
+| `20260316_試験版/webapp/index.html` | `index.html` にコピー後改修 | cp | |
+| `20260316_試験版/99_*.R`, `tmp_check_*.R` | そのまま放置 | — | 試験版フォルダ内に残置。デバッグ補助用なので scripts/ には移植しない |
+| `20260316_試験版/` 本体 | 残置（参照用） | そのまま | |
 
 ### 4.2 scripts/01〜05 の改修
 
@@ -122,26 +123,50 @@ NDB の SMA セクション、性年齢別セクションは**処理を残す**�
 | JSON 出力先 | `data/dashboard_data.json` |
 | GeoJSON コピー | `data/prefectures.geojson` のみ（`sma.geojson` のコピーはスキップ） |
 
-将来 SMA を復活させる場合は、コメントアウトを外せばよい。
+コメントアウトする SMA キーは、各行頭に統一マーカーを付ける:
+
+```r
+# [v2.0-sma-disabled] 将来 SMA 表示を復活させる場合はこの行のコメントを外す
+# sma = ndb_sma_counts,
+```
+
+将来 SMA を復活させる場合は、`grep "v2.0-sma-disabled"` で機械的に対象行を特定できる。
 
 ### 4.4 index.html の改修
 
 ベース: `20260316_試験版/webapp/index.html`（1993 行）
 
+ヘッダ・免責事項・配色・統計・CSV・年スライダ・A/B 切替・分母選択・SCR は **無改修** で取り込む。下記の SMA 削除と固有改修だけ実施する。
+
+#### 4.4.1 固有改修
+
 | 改修内容 | 場所 |
 |---|---|
-| ヘッダ表記 | `v0.9β | 最終更新: 2026/03/17` → `v2.0 | 最終更新: 2026/05/25`（タイトル `都道府県別 算定回数マップ` も再確認） |
-| 「地理単位」パネルの HTML 削除 | サイドバー先頭 |
-| `curGeoUnit` 変数 | `'pref'` で固定、setGeoUnit 関数およびコール元は削除 |
-| SMA 分岐コードの削除 | `curGeoUnit === 'sma'`、`DATA.sma`、`DATA.facility.*.sma`、`DATA.population.*.sma`、`DATA.rad_doctors.sma`、`GEO_SMA`、`MGEO_SMA` 等の参照 |
-| 施設指標定義 `FACILITY_GROUPS` の `geo` プロパティ | `'sma'` 要素を削除（または `geo` プロパティ自体を削除） |
-| 分母の有効/無効判定 | `per_nurse`/`per_rad_tech` の `curGeoUnit === 'pref'` 三項演算子を解消 |
-| fetch 文 | `fetch('data/sma.geojson')` 行を削除 |
-| ズーム範囲 | SMA レベルが消えるので最大ズーム値を見直し（標準のまま `[1, 50]` 範囲で問題なし） |
-| 免責事項オーバーレイ | 文面・挙動ともに維持 |
-| クラス名 `region-path.sma-path` | SMA ノード削除に伴い未使用、CSS は残置でも実害なし（残置） |
+| ヘッダ表記 | `v0.9β | 最終更新: 2026/03/17` → `v2.0 | 最終更新: 2026/05/25` |
+| サイドバー先頭の「地理単位」`<div class="panel">…</div>` を**ブロック単位で削除** | l.309 周辺。削除後、その下の「表示値（分母）」panel が先頭に繰り上がる（CSS gap が panel 間 10px に統一されているので余白崩れなし） |
 
-その他 A/B 切替、分母選択、SCR、配色、統計、CSV ダウンロード、年スライダ、再生アニメーションは **無改修** で取り込む。
+#### 4.4.2 SMA 削除カテゴリ別チェックリスト
+
+試験版 index.html には `sma|SMA|GeoUnit|curGeoUnit` 系の参照が **64 箇所** ある。以下 6 カテゴリでもれなく削除する:
+
+| カテゴリ | 対象例 | 簡約ルール |
+|---|---|---|
+| **(a) HTML** | 「地理単位」panel、`data-geo='sma'` 属性、`#geoToggle` | ブロック削除 |
+| **(b) fetch** | `fetch('data/sma.geojson')` の Promise.all 内エントリ、対応する `await gr.json()` 受け取り | 該当行のみ削除し、`[gr, dr] = await Promise.all([fetch(pref), fetch(json)])` に縮める |
+| **(c) 変数宣言** | `GEO_SMA`, `MGEO_SMA`, `curGeoUnit` グローバル変数、`DATA.sma.regions` 経由のリージョン一覧 | グローバル変数定義を削除。`curGeoUnit` 参照箇所は (e) の規則で除去 |
+| **(d) 分岐式** | `curGeoUnit === 'pref' ? A : B` 形、`getFacilitySource()`, `getDenomSource()`, `getRegionCodes()`, `getRegionName()` などのアクセサ | 三項演算子は A 側のみ残す形に簡約。例: `curGeoUnit === 'pref' ? DATA.population.total?.pref : DATA.population.total?.sma` → `DATA.population.total?.pref` |
+| **(e) 文言・メッセージ** | `'SCR は都道府県のみ'` 等のエラーメッセージ、CSV ファイル名生成 `ratio_${curGeoUnit}_${yr}.csv` | エラー文面は不要なので削除。CSV ファイル名は `ratio_pref_${yr}.csv` リテラルに置換 |
+| **(f) CSS** | `.region-path.sma-path`, `.region-path.sma-path.hovered` | 未使用になるが残しても実害なし。CSS だけは残置可（HTML/JS で `sma-path` クラスが付かなければ無効化される）|
+
+#### 4.4.3 機能別影響
+
+| 機能 | SMA 削除後の挙動 |
+|---|---|
+| 施設指標定義 `FACILITY_GROUPS` | 各 item の `geo: ['pref','sma']` → 配列ごと削除可、または `['pref']` に統一。`facItem` の disabled 表示判定 (`!item.geo.includes(curGeoUnit)`) も無効化 |
+| 分母 `per_nurse`/`per_rad_tech` | `curGeoUnit === 'pref' ? curDenom : 'raw'` → `curDenom` に簡約 |
+| 分母 `per_linac` | SMA 限定の `raw` フォールバックを削除し、`DATA.facility.radiation.pref?.rt_linac_units` の有無だけで判定 |
+| ズーム | 試験版の zoom 設定をそのまま維持。SMA より粒度が荒くなるので最大倍率は実用上問題なし |
+| ツールチップ | `getRegionName()` は `DATA.prefectures[code]` 固定に簡約 |
 
 ### 4.5 .gitignore 更新
 
@@ -163,7 +188,7 @@ _legacy/output/
 - 「データソース」: 既存項目 + 医療施設調査・医師統計
 - 二次医療圏には言及しない
 
-`DATA_SOURCES.md` は **無修正**。
+`DATA_SOURCES.md` は **無修正**（grep 確認済み: `smartnews-smri` の SMRI は組織名で二次医療圏 SMA とは無関係）。
 
 ## 5. テスト方針
 
@@ -171,7 +196,12 @@ R 側:
 - `source("scripts/01_download_ndb_data.R")` 〜 `10_prepare_web_data.R` を順に実行し、すべてエラーなく完走することを確認
 - 生成 JSON のサイズと主要キーが揃っていることを確認: `ndb.codes`, `ndb.counts.pref`, `facility.hospitals.pref`, `physician.pref`, `rad_doctors.pref`, `population.total.pref`, `prefectures`
 
-Web 側:
+Web 側（機械的チェック、SMA 削除完了の客観基準）:
+- `grep -nE 'sma|SMA|GeoUnit|curGeoUnit' index.html` → ヒット 0 件（`.sma-path` CSS 残置を許容する場合は 2 件以下）
+- `grep -nE 'sma\.geojson|DATA\.sma|GEO_SMA|MGEO_SMA' index.html` → 0 件
+- ブラウザ DevTools コンソールで `sma`/`undefined` 関連エラー・警告 0 件
+
+Web 側（手動確認）:
 - `python -m http.server` 起動 → ブラウザで以下を手動確認
   - 免責事項オーバーレイ表示・スクロール後同意→入る
   - デフォルト選択（M放射線治療系）でマップが青系で塗られる
