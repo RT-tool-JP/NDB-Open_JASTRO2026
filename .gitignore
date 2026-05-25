@@ -16,3 +16,7 @@ desktop.ini
 
 # Claude Code
 .claude/
+
+# v2.0 additions
+rawdata_dl/
+_legacy/output/
