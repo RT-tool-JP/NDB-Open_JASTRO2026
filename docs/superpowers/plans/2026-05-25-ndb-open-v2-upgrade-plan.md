@@ -14,6 +14,20 @@
 
 ## Phase 1: ディレクトリ再編とレガシ退避
 
+### Task 0: 退避前タグ付け（ロールバック起点）
+
+**Files:** なし（git タグのみ）
+
+- [ ] **Step 1: 現状（v1.00）にタグを打つ**
+
+```bash
+git tag v1.00-final
+```
+
+これによりロールバック先が `git reset --hard v1.00-final` で明確になる。
+
+---
+
 ### Task 1: .gitignore に rawdata_dl/ と _legacy/output/ を追加
 
 **Files:**
@@ -100,6 +114,8 @@ Move-Item "20260316_試験版/data/*" "rawdata_dl/"
 mv "20260316_試験版/data/"* rawdata_dl/
 ```
 
+注: 試験版の `data/geo/` 下には `sma.geojson` や `sma_lookup.csv` などの SMA 関連ファイルも含まれるが、`rawdata_dl/geo/` へそのまま移動して構わない。`05_download_geo_data.R` の skip 動作と互換であり、将来 SMA を復活させる際にも再 DL 不要となる。
+
 - [ ] **Step 3: 移動結果確認**
 
 ```bash
@@ -163,15 +179,20 @@ cp "20260316_試験版/05_download_geo_data.R"        scripts/
 
 Edit tool で各ファイルの `data_dir <-` 行を書き換える。
 
-- [ ] **Step 4: 動作確認（DL skip 確認）**
+- [ ] **Step 4: 01〜05 すべての動作確認（DL skip 確認）**
 
-R を起動して以下を実行（既にデータがあるので skip ログが出れば OK）:
+R を起動して 5 本を順に走らせる（既にデータがあるので大半が skip ログ）:
 
 ```r
 setwd("C:/Git/NDB-Open_2026JASTRO")
 source("scripts/01_download_ndb_data.R")
+source("scripts/02_download_facility_data.R")
+source("scripts/03_download_physician_data.R")
+source("scripts/04_download_population_data.R")
+source("scripts/05_download_geo_data.R")
 ```
-Expected: 既存ファイルは `=> skip` でログ出力されエラーなし
+
+Expected: 既存ファイルは `=> skip` でログ出力されエラーなし。**各スクリプトで `data_dir` の指す先が rawdata_dl/* となっていることをログから視認**。1 本でも DL を試みたら（rawdata_dl/ 移動漏れ or パスタイプミス）即修正。
 
 - [ ] **Step 5: コミット**
 
@@ -193,9 +214,16 @@ git commit -m "feat: scripts/01-05を試験版から移植、data_dirをrawdata_
 cp "20260316_試験版/10_prepare_web_data.R" scripts/
 ```
 
-- [ ] **Step 2: data_dir と webapp_dir/output_dir を書き換え**
+- [ ] **Step 2: Read で実ファイル該当行を確認**
 
-Edit tool で:
+```
+Read scripts/10_prepare_web_data.R offset=14 limit=8
+```
+Expected: l.15〜18 に `base_dir <- getwd()`, `data_dir <-`, `webapp_dir <-`, `dir.create(...)` が連続している。
+
+- [ ] **Step 3: data_dir と webapp_dir/output_dir を書き換え**
+
+Edit tool で（Step 2 で見た正確な改行・スペースを `old_string` にコピー）:
 
 旧:
 ```r
@@ -211,7 +239,7 @@ output_dir <- file.path(base_dir, "data")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 ```
 
-- [ ] **Step 3: JSON 出力先の書き換え**
+- [ ] **Step 4: JSON 出力先の書き換え**
 
 旧:
 ```r
@@ -223,7 +251,7 @@ json_path <- file.path(webapp_dir, "data", "dashboard_data.json")
 json_path <- file.path(output_dir, "dashboard_data.json")
 ```
 
-- [ ] **Step 4: GeoJSON コピー先の書き換え**
+- [ ] **Step 5: GeoJSON コピー先の書き換え**
 
 旧（10. GeoJSONコピー セクション）:
 ```r
@@ -327,7 +355,11 @@ web_data <- list(
 ```bash
 grep -n "v2.0-sma-disabled" scripts/10_prepare_web_data.R
 ```
-Expected: 8 行ヒット（counts, hospitals, radiation, rad_doctors, pop_total, pop_elderly, sma トップ, geo_files）
+Expected: **8 行ヒット**。内訳:
+- Task 5 Step 5（geo_files の SMA コピー） … 1 件
+- Task 6 Step 1（web_data list 内） … 7 件（counts, hospitals, radiation, rad_doctors, pop_total, pop_elderly, sma トップ）
+
+7 件しか出ない場合は Task 5 Step 5 が未適用。9 件以上の場合はマーカーを誤入力。
 
 ---
 
@@ -500,35 +532,143 @@ let curGeoUnit = 'pref';
 
 ---
 
-### Task 11: SMA 分岐を 6 カテゴリ別に削除
+### Task 11a: アクセサ関数と setGeoUnit を簡約
 
 **Files:**
-- Modify: `index.html`（JS 全域）
-
-このタスクは大物。spec 4.4.2 のカテゴリ表に従って機械的に削除する。
+- Modify: `index.html` の JS 関数群
 
 - [ ] **Step 1: 削除前の参照数カウント**
 
 ```bash
-grep -cE "sma|SMA|GeoUnit|curGeoUnit" index.html
+grep -cwE "sma|SMA|GeoUnit|curGeoUnit" index.html
 ```
-Expected: 約 64 件
+Expected: 約 64 件（カウントは目安。確実な完了基準は Task 12 の 0 件チェック）
 
-- [ ] **Step 2: 関数 `setGeoUnit` 自体を削除**
+- [ ] **Step 2: setGeoUnit 関数の境界を Read で確認**
 
-`function setGeoUnit(` から関数の閉じ `}` までを削除。
+```
+Read index.html offset=905 limit=12
+```
+Expected: l.905〜l.913 が `function setGeoUnit(unit) { ... }`。`}` までを Edit の old_string に含める。
 
-- [ ] **Step 3: アクセサ関数を pref 固定に簡約**
+- [ ] **Step 3: setGeoUnit 関数を削除**
 
-| 関数 | 改修内容 |
-|---|---|
-| `getRegionCodes()` | `Object.keys(DATA.prefectures)` 固定 |
-| `getRegionName(code)` | `DATA.prefectures[code] \|\| code` 固定 |
-| `getFacilitySource(indicator)` | 各 if 文の三項演算子 `curGeoUnit === 'pref' ? X : Y` を `X` に簡約 |
-| `getDenomSource()` | 同上 |
-| `getEffectiveDenom()` | `per_linac`/`per_nurse`/`per_rad_tech`/`per_rad_doctor` の curGeoUnit 三項演算子を簡約。`per_linac` は `DATA.facility.radiation.pref?.rt_linac_units` の有無のみで判定 |
+l.905〜l.913 のブロック全体を削除:
 
-例（`getDenomSource()`）:
+```js
+function setGeoUnit(unit) {
+  if (curGeoUnit === unit) return;
+  curGeoUnit = unit;
+  document.querySelectorAll('[data-geo]').forEach(b => b.classList.toggle('active', b.dataset.geo === unit));
+  updateFacAvailability();
+  updateDenomNote();
+  scaleDomain = null;
+  initMap(); updateMap(true);
+}
+```
+
+- [ ] **Step 4: getRegionName を pref 固定に**
+
+l.650-652:
+
+旧:
+```js
+function getRegionName(code) {
+  return curGeoUnit === 'pref' ? (DATA.prefectures[code] || code) : (DATA.sma.regions[code]?.name || code);
+}
+```
+
+新:
+```js
+function getRegionName(code) {
+  return DATA.prefectures[code] || code;
+}
+```
+
+- [ ] **Step 5: getRegionCodes を pref 固定に**
+
+l.647-649 周辺:
+
+旧:
+```js
+function getRegionCodes() {
+  return curGeoUnit === 'pref' ? Object.keys(DATA.prefectures) : Object.keys(DATA.sma.regions);
+}
+```
+
+新:
+```js
+function getRegionCodes() {
+  return Object.keys(DATA.prefectures);
+}
+```
+
+- [ ] **Step 6: getFacilitySource を 4 分岐すべて簡約**
+
+l.654-661:
+
+旧:
+```js
+function getFacilitySource(indicator) {
+  if (indicator === 'hospitals') return curGeoUnit === 'pref' ? DATA.facility.hospitals.pref : DATA.facility.hospitals.sma;
+  if (indicator === 'physicians') return DATA.physician.pref;
+  if (indicator === 'rad_doctors') return curGeoUnit === 'pref' ? DATA.rad_doctors?.pref : DATA.rad_doctors?.sma;
+  if (indicator === 'nurses') return DATA.facility.staff?.nurses;
+  if (indicator === 'rad_technologists') return DATA.facility.staff?.rad_technologists;
+  return curGeoUnit === 'pref' ? DATA.facility.radiation.pref?.[indicator] : DATA.facility.radiation.sma?.[indicator];
+}
+```
+
+新:
+```js
+function getFacilitySource(indicator) {
+  if (indicator === 'hospitals') return DATA.facility.hospitals.pref;
+  if (indicator === 'physicians') return DATA.physician.pref;
+  if (indicator === 'rad_doctors') return DATA.rad_doctors?.pref;
+  if (indicator === 'nurses') return DATA.facility.staff?.nurses;
+  if (indicator === 'rad_technologists') return DATA.facility.staff?.rad_technologists;
+  return DATA.facility.radiation.pref?.[indicator];
+}
+```
+
+- [ ] **Step 7: getEffectiveDenom の per_linac/per_nurse/per_rad_tech を簡約**
+
+l.670-688:
+
+旧 `per_linac` ブロック:
+```js
+if (curDenom === 'per_linac') {
+  // SMA has linac data for 2014,2017 only
+  const src = curGeoUnit === 'pref' ? DATA.facility.radiation.pref?.rt_linac_units : DATA.facility.radiation.sma?.rt_linac_units;
+  return src ? curDenom : 'raw';
+}
+```
+
+新:
+```js
+if (curDenom === 'per_linac') {
+  const src = DATA.facility.radiation.pref?.rt_linac_units;
+  return src ? curDenom : 'raw';
+}
+```
+
+旧 `per_nurse`/`per_rad_tech` ブロック:
+```js
+if (curDenom === 'per_nurse' || curDenom === 'per_rad_tech') {
+  return curGeoUnit === 'pref' ? curDenom : 'raw'; // staff is pref only
+}
+```
+
+新:
+```js
+if (curDenom === 'per_nurse' || curDenom === 'per_rad_tech') {
+  return curDenom;
+}
+```
+
+- [ ] **Step 8: getDenomSource を全分岐簡約**
+
+l.690-700:
 
 旧:
 ```js
@@ -560,11 +700,95 @@ function getDenomSource() {
 }
 ```
 
-`getFacilitySource()` も同様に簡約。
+- [ ] **Step 9: 中間 grep 確認**
 
-- [ ] **Step 4: `FACILITY_GROUPS` の各 item から `geo` プロパティを削除**
+```bash
+grep -nE "(^|[^A-Za-z])(curGeoUnit|GEO_SMA|MGEO_SMA)([^A-Za-z]|$)" index.html
+```
+Expected: ヒット件数が 30 件以下まで減っている（残りは updateDenomNote / FACILITY_GROUPS / CSV / Map 描画。次タスクで処理）
+
+---
+
+### Task 11b: updateDenomNote と FACILITY_GROUPS を pref 前提に
+
+**Files:**
+- Modify: `index.html`
+
+- [ ] **Step 1: updateDenomNote を改修**
+
+l.870-900。SMA 関連分岐を 4 箇所削除し、SCR を常に有効として扱う。
 
 旧:
+```js
+function updateDenomNote() {
+  const note = document.getElementById('denomNote');
+  const eff = getEffectiveDenom();
+  if (eff !== curDenom) {
+    let reason;
+    if (curDenom === 'scr') {
+      const cfg = curDisplayMode === 'B' ? configB : configA;
+      if (cfg.dataMode !== 'ndb') reason = 'SCRはNDBデータのみ対応';
+      else if (curGeoUnit !== 'pref') reason = 'SCRは都道府県のみ対応';
+      else reason = 'SCRデータなし';
+    } else {
+      reason = curGeoUnit === 'sma' ? '二次医療圏の' + DENOM_LABELS[curDenom].short.replace('あたり','') + 'データなし' : 'データなし';
+    }
+    note.textContent = reason + ' → 実数で表示';
+    note.style.display = '';
+  } else if (eff === 'scr') {
+    note.innerHTML = 'SCR: 年齢・性別構成を間接標準化で補正。100=全国平均水準';
+    note.style.display = '';
+  } else if (curGeoUnit === 'sma' && (curDenom === 'pop100k' || curDenom === 'eld100k')) {
+    note.textContent = '二次医療圏の人口はA38(国勢調査)ベースの線形補間推計値です';
+    note.style.display = '';
+  } else if (curDenom === 'per_rad_doctor') {
+    note.textContent = '放射線科医数: 都道府県は2014,2022年、二次医療圏は2022年のみ';
+    note.style.display = '';
+  } else if (curDenom === 'per_nurse' || curDenom === 'per_rad_tech') {
+    note.textContent = 'スタッフ数(常勤換算): 2017,2020,2023年のみ(静態調査)';
+    note.style.display = '';
+  } else {
+    note.style.display = 'none';
+  }
+}
+```
+
+新:
+```js
+function updateDenomNote() {
+  const note = document.getElementById('denomNote');
+  const eff = getEffectiveDenom();
+  if (eff !== curDenom) {
+    let reason;
+    if (curDenom === 'scr') {
+      const cfg = curDisplayMode === 'B' ? configB : configA;
+      if (cfg.dataMode !== 'ndb') reason = 'SCRはNDBデータのみ対応';
+      else reason = 'SCRデータなし';
+    } else {
+      reason = 'データなし';
+    }
+    note.textContent = reason + ' → 実数で表示';
+    note.style.display = '';
+  } else if (eff === 'scr') {
+    note.innerHTML = 'SCR: 年齢・性別構成を間接標準化で補正。100=全国平均水準';
+    note.style.display = '';
+  } else if (curDenom === 'per_rad_doctor') {
+    note.textContent = '放射線科医数: 2014, 2022年のみ';
+    note.style.display = '';
+  } else if (curDenom === 'per_nurse' || curDenom === 'per_rad_tech') {
+    note.textContent = 'スタッフ数(常勤換算): 2017,2020,2023年のみ(静態調査)';
+    note.style.display = '';
+  } else {
+    note.style.display = 'none';
+  }
+}
+```
+
+- [ ] **Step 2: FACILITY_GROUPS から geo プロパティ削除**
+
+l.467-491。各 item の `, geo: ['pref','sma']` または `, geo: ['pref']` を**削除**。
+
+旧例:
 ```js
 { id: 'hospitals', name: '病院数', unit: '施設', geo: ['pref','sma'] },
 ```
@@ -574,47 +798,79 @@ function getDenomSource() {
 { id: 'hospitals', name: '病院数', unit: '施設' },
 ```
 
-すべての item で `geo:` プロパティ自体を削除。
+全 13 item で削除（一括 Edit で `replace_all=true` を使い、`, geo: ['pref','sma']` および `, geo: ['pref']` の 2 パターンを順に処理）。
 
-- [ ] **Step 5: 施設指標リスト描画の disabled 判定を削除**
+- [ ] **Step 3: 施設指標リスト描画の disabled 判定を削除**
 
-`buildFacList()` または `renderFac` 系で `item.geo.includes(curGeoUnit)` を使った disabled 制御を削除。
+`buildFacList()` 関数内（l.1075 周辺）で `item.geo` を参照する disabled 判定があれば削除し、すべての項目を有効化。
 
-- [ ] **Step 6: CSV ファイル名生成の curGeoUnit を pref リテラルに**
+- [ ] **Step 4: updateFacAvailability 関数の扱い**
+
+`updateFacAvailability` が SMA 切替時の有効性更新だった場合は関数自体を削除、呼び出し箇所からも削除。Read で実装を確認してから判断:
+
+```
+grep -nE "updateFacAvailability" index.html
+```
+
+---
+
+### Task 11c: マップ描画・CSV・残り SMA 分岐を一掃
+
+**Files:**
+- Modify: `index.html`
+
+- [ ] **Step 1: CSV ダウンロード関数の SMA 関連削除**
+
+l.1840-1890 で `curGeoUnit` を使う 4 箇所を pref リテラルに置換:
+
+旧:
+```js
+const codeLabel = curGeoUnit === 'pref' ? '都道府県コード' : '二次医療圏コード';
+const nameLabel = curGeoUnit === 'pref' ? '都道府県名' : '二次医療圏名';
+```
+
+新:
+```js
+const codeLabel = '都道府県コード';
+const nameLabel = '都道府県名';
+```
+
+CSV ファイル名 2 箇所（l.1854, l.1888）:
 
 旧:
 ```js
 a.download = `ratio_${curGeoUnit}_${yr}.csv`;
+...
+a.download = `${prefix}_${curDisplayMode}_${curGeoUnit}_${yr}.csv`;
 ```
 
 新:
 ```js
 a.download = `ratio_pref_${yr}.csv`;
+...
+a.download = `${prefix}_${curDisplayMode}_pref_${yr}.csv`;
 ```
 
-他の `${curGeoUnit}_${yr}.csv` 系も同様に置換。
+- [ ] **Step 2: initMap / drawMap の SMA レイヤ削除**
 
-- [ ] **Step 7: SMA 関連エラーメッセージ・分岐を削除**
+```bash
+grep -nE "curGeoUnit|GEO_SMA|MGEO_SMA|sma-path|DATA\.sma" index.html
+```
 
-`curGeoUnit === 'sma'` ブロック、`DATA.sma.regions` 直接参照、`!DATA.sma` 系チェックを全削除。
+残りの `if (curGeoUnit === 'sma')` ブロック、SMA GeoJSON の描画、`DATA.sma.regions` 参照を全削除。`MGEO_SMA = toMercator(GEO_SMA)` 等の初期化も削除。
 
-- [ ] **Step 8: initMap / drawMap の SMA レイヤ描画を削除**
+- [ ] **Step 3: その他残存箇所**
 
-`if (curGeoUnit === 'sma') ...` で SMA GeoJSON を描画している箇所を全削除し、pref のみの描画に統一。
+上記 grep でヒットしたすべてを spec 4.4.2 のカテゴリ表に照らして消し込む。
 
-- [ ] **Step 9: hasDataForConfig 等の判定関数から SMA 分岐を削除**
+- [ ] **Step 4: CSS の `.region-path.sma-path` ルールを削除**
 
-`curGeoUnit` を参照しているあらゆる箇所を pref 前提に書き換える。
-
-- [ ] **Step 10: CSS の `.region-path.sma-path` ルールを削除**
-
-旧:
 ```css
 .region-path.sma-path{stroke-width:.3}
 .region-path.sma-path.hovered{stroke-width:1.2}
 ```
 
-新（行ごと削除）。
+行ごと削除。
 
 ---
 
@@ -623,17 +879,19 @@ a.download = `ratio_pref_${yr}.csv`;
 **Files:**
 - Verify: `index.html`
 
-- [ ] **Step 1: 削除完了の機械的チェック**
+- [ ] **Step 1: 単語境界付き grep で削除完了チェック**
 
 ```bash
-grep -nE "sma|SMA|GeoUnit|curGeoUnit" index.html
+grep -nwE "sma|SMA|GeoUnit|curGeoUnit" index.html
 ```
+（`-w` で単語境界。`smartnews-smri` 等の偶発マッチを回避）
+
 Expected: **0 件**
 
 - [ ] **Step 2: 特定識別子の二重確認**
 
 ```bash
-grep -nE "sma\.geojson|DATA\.sma|GEO_SMA|MGEO_SMA|setGeoUnit|curGeoUnit" index.html
+grep -nE "sma\.geojson|DATA\.sma|GEO_SMA|MGEO_SMA|setGeoUnit|curGeoUnit|sma-path" index.html
 ```
 Expected: **0 件**
 
@@ -828,11 +1086,14 @@ git commit -m "docs: README.mdをv2.0に更新"
 **Files:**
 - Verify: 全体
 
-- [ ] **Step 1: git log で変更履歴確認**
+- [ ] **Step 1: git log で変更履歴確認 + タグ付け**
 
 ```bash
-git log --oneline -10
+git log --oneline -15
+git tag v2.0
 ```
+
+タグ `v2.0` を打っておくと、後でロールバックや差分確認がしやすい。
 
 - [ ] **Step 2: 全ファイルがコミット済みであることを確認**
 
@@ -865,12 +1126,14 @@ Expected: working tree clean（rawdata_dl/ は ignored）
 万一不具合があった場合:
 
 ```bash
-# 完了直前のコミットに戻る
-git reset --hard <commit-before-v2.0>
+# Phase 1 開始前（タグ v1.00-final があれば）
+git reset --hard v1.00-final
 
-# または特定タスクのみ取り消し
+# 個別タスクのみ取り消し
 git revert <commit-hash>
 ```
+
+Phase 1 着手前に `git tag v1.00-final` を打っておくとロールバックが確実。Phase 完了ごとの hash も `git log --oneline` でメモしておくこと。
 
 `_legacy/index.html` から旧 v1.00 を復活させる場合:
 
