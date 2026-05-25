@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NDB Open Data - 都道府県別 算定回数マップ</title>
+<link rel="icon" href="data:,">
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
 :root {
@@ -290,9 +291,10 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
     <div class="sub">都道府県別 算定回数マップ <span style="margin-left:6px;font-size:10px;opacity:.6">v2.0 | 最終更新: 2026/05/25</span></div>
     <div class="hdr-spacer"></div>
     <div class="disp-toggle" id="dispToggle" title="表示モード切替">
-      <button class="disp-btn active" data-disp="A" onclick="setDisplayMode('A')">A</button>
-      <button class="disp-btn" data-disp="B" onclick="setDisplayMode('B')">B</button>
-      <button class="disp-btn" data-disp="ratio" onclick="setDisplayMode('ratio')">A/B比</button>
+      <button class="disp-btn active" data-disp="A" onclick="setDisplayMode('A')">表示A</button>
+      <button class="disp-btn" data-disp="B" onclick="setDisplayMode('B')">表示B</button>
+      <button class="disp-btn" data-disp="ratio" onclick="setDisplayMode('ratio')">A・B比</button>
+      <button class="disp-btn" data-disp="trends" onclick="setDisplayMode('trends')">年次推移</button>
     </div>
     <div class="edit-target-area" id="editTargetArea" style="display:none">
       <span class="et-label">設定対象:</span>
@@ -1888,10 +1890,10 @@ function setupControls() {
   // Initialize config A with current (NDB default) state
   saveCurrentConfig(); // saves to configA
 
-  // Initialize config B: facility mode, hospitals as default
+  // Initialize config B: facility mode, リニアック台数 as default
   configB = {
     dataMode: 'facility',
-    facIndicator: 'hospitals',
+    facIndicator: 'rt_linac_units',
     selectedProcIds: [...configA.selectedProcIds] // keep same NDB selection for when user switches B to NDB
   };
 }
