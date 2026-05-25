@@ -1331,27 +1331,44 @@ function initMap() {
 /* ================================================================ */
 /* UPDATE MAP                                                        */
 /* ================================================================ */
+/* Palette family of the currently active palette: 'seq' | 'div'.
+   Custom palette is treated as sequential. */
+function paletteFamily() {
+  const key = getActivePaletteKey();
+  if (key === 'custom') return 'seq';
+  return isPaletteDiverging(key) ? 'div' : 'seq';
+}
 function computeAutoDomain(vals) {
   const arr = Object.values(vals).map(v => v.dv).filter(v => v !== null && v > 0);
-  return arr.length ? [0, d3.quantile(arr.sort(d3.ascending), .98) || 1] : [0, 1];
+  if (!arr.length) return [0, 1];
+  const sorted = arr.slice().sort(d3.ascending);
+  const hi = d3.quantile(sorted, .98) || 1;
+  if (paletteFamily() === 'div') {
+    const lo = Math.max(0, d3.quantile(sorted, .02) || 0);
+    return [lo, Math.max(lo + 0.001, hi)];
+  }
+  return [0, hi];
 }
 function computeScrDomain(vals) {
-  // Symmetric around 100 for SCR diverging scale
+  // Symmetric around 100 for SCR diverging scale (intentional: SCR=100 means national average)
   const arr = Object.values(vals).map(v => v.dv).filter(v => v !== null && v > 0);
   if (!arr.length) return [50, 150];
   arr.sort(d3.ascending);
   const lo = d3.quantile(arr, 0.02) || 50;
   const hi = d3.quantile(arr, 0.98) || 150;
   const maxDev = Math.max(Math.abs(100 - lo), Math.abs(hi - 100), 20);
-  return [100 - maxDev, 100 + maxDev];
+  return [Math.max(0, 100 - maxDev), 100 + maxDev];
 }
 function computeRatioDomain(rvals) {
   const ratios = Object.values(rvals).map(v => v.ratio).filter(v => v !== null && v > 0 && isFinite(v));
   if (!ratios.length) return [0.5, 2.0];
-  const logR = ratios.map(v => Math.log2(v));
-  const absMax = Math.max(Math.abs(d3.quantile(logR.sort(d3.ascending), 0.02) || 1),
-                          Math.abs(d3.quantile(logR, 0.98) || 1), 0.2);
-  return [Math.pow(2, -absMax), Math.pow(2, absMax)];
+  const sorted = ratios.slice().sort(d3.ascending);
+  const lo = Math.max(0, d3.quantile(sorted, 0.02) || 0);
+  const hi = d3.quantile(sorted, 0.98) || 1;
+  if (paletteFamily() === 'div') {
+    return [lo, Math.max(lo + 0.001, hi)];
+  }
+  return [0, Math.max(0.001, hi)];
 }
 function updateScaleBadge() {
   const b = document.getElementById('scaleModeBadge');
@@ -1364,15 +1381,15 @@ function updateScaleUI() {
   document.getElementById('scaleMin').value = Math.round(lo * 1000) / 1000;
   document.getElementById('scaleMax').value = Math.round(hi * 1000) / 1000;
   updateScaleBadge();
-  // Sync sliders
+  // Sync sliders. Lower bound floor is 0 (negative values not selectable).
   const sLo = document.getElementById('scaleSliderLo');
   const sHi = document.getElementById('scaleSliderHi');
   const range = hi - lo || 1;
-  const sMin = Math.min(0, lo - range * 0.5);
+  const sMin = 0;
   const sMax = hi + range * 0.5;
   const step = range / 200;
   [sLo, sHi].forEach(s => { s.min = sMin; s.max = sMax; s.step = step; });
-  sLo.value = lo; sHi.value = hi;
+  sLo.value = Math.max(0, lo); sHi.value = Math.max(sLo.value, hi);
   updateSliderTrack();
 }
 
@@ -1714,8 +1731,9 @@ function drawTrendChart(svg, data, opts, meta) {
 }
 
 function applyManualScale() {
-  const lo = parseFloat(document.getElementById('scaleMin').value) || 0;
-  const hi = parseFloat(document.getElementById('scaleMax').value) || 1;
+  // Clamp lo to 0 (negative values not selectable)
+  const lo = Math.max(0, parseFloat(document.getElementById('scaleMin').value) || 0);
+  const hi = Math.max(0, parseFloat(document.getElementById('scaleMax').value) || 1);
   scaleDomain = [lo, Math.max(lo + 0.001, hi)];
   scaleIsAuto = false;
   updateScaleUI(); updateMap(false);
@@ -1724,8 +1742,8 @@ function applyManualScaleLive() {
   if (sliderRAF) return;
   sliderRAF = requestAnimationFrame(() => {
     sliderRAF = null;
-    const lo = parseFloat(document.getElementById('scaleMin').value) || 0;
-    const hi = parseFloat(document.getElementById('scaleMax').value) || 1;
+    const lo = Math.max(0, parseFloat(document.getElementById('scaleMin').value) || 0);
+    const hi = Math.max(0, parseFloat(document.getElementById('scaleMax').value) || 1);
     scaleDomain = [lo, Math.max(lo + 0.001, hi)];
     scaleIsAuto = false;
     updateScaleBadge();
@@ -1857,7 +1875,9 @@ function selectPalette(key, isCustom) {
   document.querySelectorAll('#palChoices .lc-pal-swatch').forEach(s => {
     s.classList.toggle('active', isCustom ? s.classList.contains('custom-sw') : s.dataset.pal === key);
   });
-  updateMap(false);
+  // In auto mode, palette family change may shift the default domain (seq:[0,max] vs div:[min,max])
+  if (scaleIsAuto) scaleDomain = null;
+  updateMap(scaleIsAuto);
 }
 function onCustomColorChange() {
   const m = getPaletteModeKey();
