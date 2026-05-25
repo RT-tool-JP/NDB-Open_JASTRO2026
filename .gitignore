@@ -17,6 +17,8 @@ desktop.ini
 # Claude Code
 .claude/
 
-# v2.0 additions
+# v2.0 — 実行には不要な作業ディレクトリ・参照用アセット
 rawdata_dl/
-_legacy/output/
+_legacy/
+20260316_試験版/
+docs/
