@@ -106,6 +106,7 @@ header .sub{margin-left:14px;font-size:15px;color:var(--text-ll)}
 .fac-item input[type="radio"]{accent-color:var(--pri);cursor:pointer;flex-shrink:0}
 .fac-item .fac-name{font-size:11.5px;color:var(--text-m);flex:1}
 .fac-item .fac-badge{font-size:9px;color:var(--text-ll);background:var(--border-lt);padding:1px 5px;border-radius:3px;white-space:nowrap}
+.fac-item .fac-badge.hosp{color:#b45309;background:#fef3c7}
 .fac-list{max-height:50vh;overflow-y:auto}
 
 /* Year */
@@ -119,6 +120,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 .year-source .ys-lbl{color:var(--text-ll);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .year-source .ys-yr{font-weight:600;white-space:nowrap}
 .year-source .ys-yr.ys-diff{color:#b45309}
+.year-source .ys-scope{color:#b45309;font-weight:600;margin-left:4px}
 .play-row{display:flex;align-items:center;gap:6px;margin-top:8px}
 .play-btn{flex:1;padding:6px 0;border:1px solid var(--pri);border-radius:6px;background:var(--pri-lt);color:var(--pri);font-size:16px;font-weight:600;cursor:pointer;transition:all .15s}
 .play-btn:hover,.play-btn.active{background:var(--pri);color:#fff}
@@ -286,7 +288,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       レセプト情報・特定健診等情報データベース（NDB）より作成された集計表データ（第1回〜第11回、FY2014〜FY2024）を使用しています。</p>
       <p><b>2. 厚生労働省「医療施設調査」</b><br>
       <a href="https://www.e-stat.go.jp/stat-search/files?toukei=00450021" target="_blank" rel="noopener">https://www.e-stat.go.jp/stat-search/files?toukei=00450021</a><br>
-      病院数（動態調査・各年〜2024年）、放射線治療設備（リニアック台数等）・従事者数（看護師・診療放射線技師）（静態調査: 2014, 2017, 2020, 2023年）のデータを使用しています。</p>
+      病院数（動態調査・各年〜2024年）、放射線治療設備（リニアック台数等）・従事者数（看護師・診療放射線技師）（静態調査: 2014, 2017, 2020, 2023年）のデータを使用しています。放射線治療設備・従事者数は<b>病院のみ</b>の集計であり、一般診療所（クリニック等）は含まれません。このため、これらを用いた指標・分母（リニアック1台あたり等）は病院分のみに基づく点にご留意ください。</p>
       <p><b>3. 厚生労働省「医師・歯科医師・薬剤師統計」</b><br>
       <a href="https://www.e-stat.go.jp/stat-search/files?toukei=00450026" target="_blank" rel="noopener">https://www.e-stat.go.jp/stat-search/files?toukei=00450026</a><br>
       医師数・放射線科医数のデータを使用しています（医師数: 2014・2016・2018・2020・2022・2024年、放射線科医数: 2014・2022・2024年）。</p>
@@ -425,6 +427,8 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
           <div class="ms-cell"><div class="ms-lbl">IQR</div><div class="ms-val" id="sIQR">-</div></div>
           <div class="ms-cell"><div class="ms-lbl">ジニ係数</div><div class="ms-val" id="sGini">-</div></div>
           <div class="ms-cell"><div class="ms-lbl">変動係数</div><div class="ms-val" id="sCV">-</div></div>
+          <div class="ms-cell"><div class="ms-lbl">欠損</div><div class="ms-val" id="sMissing">-</div></div>
+          <div class="ms-cell"><div class="ms-lbl">欠損率</div><div class="ms-val" id="sMissRate">-</div></div>
         </div>
       </div>
       <div class="legend-ctrl" id="legendCtrl">
@@ -502,6 +506,16 @@ const DIV_PALETTES = {
 
 const RECLASS_MAP = { '180058750': { code: 'K154-4', name: '経頭蓋MRガイド下集束超音波治療' } };
 const fmt = d3.format(',.0f'), fmtD = d3.format(',.1f'), fmtR = d3.format('.2f');
+// 桁適応フォーマッタ: 大きい値は整数、小さい小数値(人口あたり/技師あたり等)は小数で表示
+const fmtStat = v => {
+  if (v == null || !isFinite(v)) return '-';
+  if (Number.isInteger(v)) return d3.format(',.0f')(v);  // 実数カウント等の整数はそのまま
+  const a = Math.abs(v);
+  if (a >= 100) return d3.format(',.0f')(v);
+  if (a >= 10) return d3.format(',.1f')(v);
+  if (a >= 1) return d3.format(',.2f')(v);
+  return d3.format(',.3f')(v);
+};
 
 const FACILITY_GROUPS = [
   { title: '基本', items: [
@@ -542,6 +556,13 @@ const DENOM_LABELS = {
   per_rad_tech: { short: '放射線技師1人あたり', legend: '放射線技師1人(常勤換算)あたり', unit: '/人(技師)' },
   scr: { short: 'SCR', legend: 'SCR（年齢・性別調整）', unit: '' }
 };
+
+// 医療施設調査由来の設備・従事者は「病院のみ」の集計(一般診療所を含まない)。
+// 病院数=自明 / 医師数=届出全数 / 放射線科医数=医療施設従事(病院+診療所) は対象外。
+const HOSPITAL_ONLY_INDICATORS = new Set(
+  FAC_FLAT.map(i => i.id).filter(id => !['hospitals', 'physicians', 'rad_doctors'].includes(id))
+);
+const HOSPITAL_ONLY_DENOMS = new Set(['per_linac', 'per_nurse', 'per_rad_tech']);
 
 /* ================================================================ */
 /* STATE                                                             */
@@ -1028,8 +1049,11 @@ function updateDenomNote() {
   } else if (curDenom === 'per_rad_doctor') {
     note.textContent = '放射線科医数: 2014, 2022, 2024年のみ';
     note.style.display = 'block';
+  } else if (curDenom === 'per_linac') {
+    note.textContent = 'リニアック台数: 病院のみの集計(一般診療所を含まない)・静態調査年';
+    note.style.display = 'block';
   } else if (curDenom === 'per_nurse' || curDenom === 'per_rad_tech') {
-    note.textContent = 'スタッフ数(常勤換算): 2017,2020,2023年のみ(静態調査)';
+    note.textContent = 'スタッフ数(常勤換算): 病院のみ・2017,2020,2023年(静態調査)';
     note.style.display = 'block';
   } else if (curDenom === 'eld100k' && (getYear() === 2015 || getYear() === 2020)) {
     note.textContent = `65歳以上人口の${getYear()}年は前後年からの補間値です`;
@@ -1245,8 +1269,9 @@ function buildFacilityList() {
       const label = document.createElement('label'); label.className = 'fac-item';
       label.dataset.facId = item.id;
       const checked = item.id === curFacIndicator ? 'checked' : '';
+      const hospBadge = HOSPITAL_ONLY_INDICATORS.has(item.id) ? `<span class="fac-badge hosp">病院のみ</span>` : '';
       label.innerHTML = `<input type="radio" name="fac" value="${item.id}" ${checked}>
-        <span class="fac-name">${item.name}</span>`;
+        <span class="fac-name">${item.name}</span>${hospBadge}`;
       label.querySelector('input').addEventListener('change', () => setFacIndicator(item.id));
       grp.appendChild(label);
     });
@@ -1465,12 +1490,16 @@ function updateYearSource(yr) {
 
   const addCfgRows = (cfg, prefix) => {
     const dy = detectDataYears(cfg, yr);
+    const numHosp = cfg.dataMode === 'facility' && HOSPITAL_ONLY_INDICATORS.has(cfg.facIndicator);
     const numLabel = prefix + (cfg.dataMode === 'ndb' ? 'NDB算定回数' : (facInfo(cfg.facIndicator)?.name || cfg.facIndicator));
-    if (dy.numYear !== yr) {
-      rows.push({ lbl: numLabel, year: dy.numYear, diff: true });
+    if (dy.numYear !== yr || numHosp) {
+      rows.push({ lbl: numLabel, year: dy.numYear, diff: dy.numYear !== yr, scope: numHosp ? '病院のみ' : '' });
     }
-    if (eff !== 'raw' && dy.denomYear !== yr) {
-      rows.push({ lbl: prefix + DENOM_LABELS[eff].short.replace('あたり','').replace('1台','').replace('1人','').replace('1施設',''), year: dy.denomYear, diff: true });
+    if (eff !== 'raw') {
+      const denHosp = HOSPITAL_ONLY_DENOMS.has(eff);
+      if (dy.denomYear !== yr || denHosp) {
+        rows.push({ lbl: prefix + DENOM_LABELS[eff].short.replace('あたり','').replace('1台','').replace('1人','').replace('1施設',''), year: dy.denomYear, diff: dy.denomYear !== yr, scope: denHosp ? '病院のみ' : '' });
+      }
     }
   };
 
@@ -1489,7 +1518,7 @@ function updateYearSource(yr) {
   }
   el.style.display = 'block';
   el.innerHTML = rows.map(r =>
-    `<div class="ys-row"><span class="ys-lbl">${r.lbl}</span><span class="ys-yr${r.diff?' ys-diff':''}">${r.year}年データ</span></div>`
+    `<div class="ys-row"><span class="ys-lbl">${r.lbl}${r.scope?`<span class="ys-scope">${r.scope}</span>`:''}</span><span class="ys-yr${r.diff?' ys-diff':''}">${r.year}年データ</span></div>`
   ).join('');
 }
 
@@ -1962,44 +1991,71 @@ function updateStats(vals, isRatio) {
 
   document.getElementById('msTitle').textContent = curDisplayMode === 'A' ? '統計 (A)' : curDisplayMode === 'B' ? '統計 (B)' : '統計';
 
+  const cfg = curDisplayMode === 'B' ? configB : configA;
   const entries = Object.entries(vals);
   const valid = entries.filter(([_,v]) => v.num !== null);
-  const totalNum = valid.reduce((s,[_,v]) => s + v.num, 0);
+  const totalNum = valid.reduce((s,[_,v]) => s + v.num, 0);  // 可視(欠損でない)都道府県値の合計
+
+  // 国の総計(NDBのみ・秘匿前の真の全国値): 選択診療行為コードの総計列を合算
+  let nationalTotal = null;
+  if (cfg.dataMode === 'ndb' && DATA.ndb.counts && DATA.ndb.counts.national) {
+    const ys = String(getYear());
+    let nt = 0, has = false;
+    cfg.selectedProcIds.forEach(code => {
+      const nv = DATA.ndb.counts.national[code] && DATA.ndb.counts.national[code][ys];
+      if (nv != null && isFinite(nv)) { nt += nv; has = true; }
+    });
+    if (has) nationalTotal = nt;
+  }
+  const effTotal = (nationalTotal != null) ? nationalTotal : totalNum;  // 全国合計は総計(真の全国値)を優先
+  // 欠損レコード率 = 1 − 可視都道府県値の合計 / 総計
+  const missRate = (nationalTotal != null && nationalTotal > 0) ? Math.max(0, 1 - totalNum / nationalTotal) : null;
 
   const eff = getEffectiveDenom();
   let avg;
   if (eff === 'raw') {
-    avg = valid.length > 0 ? totalNum / valid.length : 0;
+    avg = (nationalTotal != null) ? (entries.length > 0 ? effTotal / entries.length : 0)
+                                  : (valid.length > 0 ? totalNum / valid.length : 0);
+  } else if (nationalTotal != null) {
+    // 総計優先: 全都道府県の分母合計で人口加重の全国率を算出
+    const nationalDenom = entries.reduce((s,[_,v]) => s + ((v.denomRaw != null && v.denomRaw > 0) ? v.denomRaw : 0), 0);
+    avg = nationalDenom > 0 ? effTotal / nationalDenom * getDenomMul() : 0;
   } else {
     const withDenom = valid.filter(([_,v]) => v.denomRaw != null && v.denomRaw > 0);
-    // 分子も分母有効な地域に限定（人口加重の全国平均率を分子・分母で整合させる）
     const numWithDenom = withDenom.reduce((s,[_,v]) => s + v.num, 0);
     const totalDenom = withDenom.reduce((s,[_,v]) => s + v.denomRaw, 0);
-    const mul = getDenomMul();  // valid[0] は [code,value] ペアのため .denomMul は取れない
-    avg = totalDenom > 0 ? numWithDenom / totalDenom * mul : 0;
+    avg = totalDenom > 0 ? numWithDenom / totalDenom * getDenomMul() : 0;
   }
 
-  let maxV=0, minV=Infinity, maxPr='-', minPr='-';
+  // 最小/最大/四分位・中央値は「値がある(欠損でない)都道府県」のみで算出
+  let maxV=null, minV=null, maxPr='', minPr='';
   valid.forEach(([rc,v]) => {
-    if (v.dv !== null && v.dv > maxV) { maxV = v.dv; maxPr = getRegionName(rc); }
-    if (v.dv !== null && v.dv > 0 && v.dv < minV) { minV = v.dv; minPr = getRegionName(rc); }
+    if (v.dv === null || isNaN(v.dv)) return;
+    if (maxV === null || v.dv > maxV) { maxV = v.dv; maxPr = getRegionName(rc); }
+    if (minV === null || v.dv < minV) { minV = v.dv; minPr = getRegionName(rc); }
   });
   const sorted = valid.map(([_,v]) => v.dv).filter(v => v !== null && !isNaN(v)).sort(d3.ascending);
-  const q1 = d3.quantile(sorted,.25)||0, med = d3.quantile(sorted,.5)||0;
-  const q3 = d3.quantile(sorted,.75)||0, iqr = q3-q1;
+  const q1 = sorted.length ? d3.quantile(sorted,.25) : null;
+  const med = sorted.length ? d3.quantile(sorted,.5) : null;
+  const q3 = sorted.length ? d3.quantile(sorted,.75) : null;
+  const iqr = (q1 !== null && q3 !== null) ? q3 - q1 : null;
+  // 欠損(秘匿/データなし)を含む都道府県数(複数選択時は一部項目のみ欠損も計上)
+  const missingCount = entries.filter(([_,v]) => v.num === null || v.hasNA).length;
 
-  document.getElementById('sTotal').textContent = fmt(totalNum);
+  document.getElementById('sTotal').textContent = fmt(effTotal);
   document.getElementById('sAvg').textContent = fmtD(avg);
-  document.getElementById('sMax').textContent = fmt(maxV);
+  document.getElementById('sMax').textContent = fmtStat(maxV);
   document.getElementById('sMaxP').textContent = maxPr;
-  document.getElementById('sMin').textContent = minV < Infinity ? fmt(minV) : '-';
-  document.getElementById('sMinP').textContent = minV < Infinity ? minPr : '';
-  document.getElementById('sQ1').textContent = fmt(q1);
-  document.getElementById('sMed').textContent = fmt(med);
-  document.getElementById('sQ3').textContent = fmt(q3);
-  document.getElementById('sIQR').textContent = fmt(iqr);
+  document.getElementById('sMin').textContent = fmtStat(minV);
+  document.getElementById('sMinP').textContent = minPr;
+  document.getElementById('sQ1').textContent = fmtStat(q1);
+  document.getElementById('sMed').textContent = fmtStat(med);
+  document.getElementById('sQ3').textContent = fmtStat(q3);
+  document.getElementById('sIQR').textContent = fmtStat(iqr);
   document.getElementById('sGini').textContent = calcGini(sorted).toFixed(3);
   document.getElementById('sCV').textContent = calcCV(sorted).toFixed(3);
+  document.getElementById('sMissing').textContent = `${missingCount}/${entries.length}`;
+  document.getElementById('sMissRate').textContent = missRate != null ? (missRate * 100).toFixed(1) + '%' : '-';
   positionStats();
 }
 
@@ -2015,30 +2071,38 @@ function updateStatsRatio(rvals) {
   const valid = entries.filter(([_,v]) => v.ratio !== null && isFinite(v.ratio));
   const ratios = valid.map(([_,v]) => v.ratio).sort(d3.ascending);
 
-  const avg = ratios.length > 0 ? d3.mean(ratios) : 0;
-  let maxV=0, minV=Infinity, maxPr='-', minPr='-';
+  const fr = v => (v == null || !isFinite(v)) ? '-' : fmtR(v);
+  const avg = ratios.length > 0 ? d3.mean(ratios) : null;
+  // 比が算出できる(A・Bとも値がある)都道府県のみで算出
+  let maxV=null, minV=null, maxPr='', minPr='';
   valid.forEach(([rc,v]) => {
-    if (v.ratio > maxV) { maxV = v.ratio; maxPr = getRegionName(rc); }
-    if (v.ratio < minV) { minV = v.ratio; minPr = getRegionName(rc); }
+    if (maxV === null || v.ratio > maxV) { maxV = v.ratio; maxPr = getRegionName(rc); }
+    if (minV === null || v.ratio < minV) { minV = v.ratio; minPr = getRegionName(rc); }
   });
-  const q1 = d3.quantile(ratios,.25)||0, med = d3.quantile(ratios,.5)||0;
-  const q3 = d3.quantile(ratios,.75)||0, iqr = q3-q1;
+  const q1 = ratios.length ? d3.quantile(ratios,.25) : null;
+  const med = ratios.length ? d3.quantile(ratios,.5) : null;
+  const q3 = ratios.length ? d3.quantile(ratios,.75) : null;
+  const iqr = (q1 !== null && q3 !== null) ? q3 - q1 : null;
+  // 欠損(A・Bいずれかが欠損で比を算出できない)都道府県数
+  const missingCount = entries.filter(([_,v]) => v.ratio === null || !isFinite(v.ratio)).length;
 
-  const totalA = valid.reduce((s,[_,v]) => s + (v.aNum || 0), 0);
-  document.getElementById('sTotal').textContent = fmtR(totalA > 0 ? totalA / valid.reduce((s,[_,v]) => s + (v.bNum || 0), 0) : 0);
+  const bTot = valid.reduce((s,[_,v]) => s + (v.bNum || 0), 0);
+  document.getElementById('sTotal').textContent = fr(bTot > 0 ? valid.reduce((s,[_,v]) => s + (v.aNum || 0), 0) / bTot : null);
   document.getElementById('sTotalUnit').textContent = '(全国比)';
-  document.getElementById('sAvg').textContent = fmtR(avg);
+  document.getElementById('sAvg').textContent = fr(avg);
   document.getElementById('sAvgUnit').textContent = '(平均比)';
-  document.getElementById('sMax').textContent = fmtR(maxV);
+  document.getElementById('sMax').textContent = fr(maxV);
   document.getElementById('sMaxP').textContent = maxPr;
-  document.getElementById('sMin').textContent = minV < Infinity ? fmtR(minV) : '-';
-  document.getElementById('sMinP').textContent = minV < Infinity ? minPr : '';
-  document.getElementById('sQ1').textContent = fmtR(q1);
-  document.getElementById('sMed').textContent = fmtR(med);
-  document.getElementById('sQ3').textContent = fmtR(q3);
-  document.getElementById('sIQR').textContent = fmtR(iqr);
+  document.getElementById('sMin').textContent = fr(minV);
+  document.getElementById('sMinP').textContent = minPr;
+  document.getElementById('sQ1').textContent = fr(q1);
+  document.getElementById('sMed').textContent = fr(med);
+  document.getElementById('sQ3').textContent = fr(q3);
+  document.getElementById('sIQR').textContent = fr(iqr);
   document.getElementById('sGini').textContent = calcGini(ratios).toFixed(3);
   document.getElementById('sCV').textContent = calcCV(ratios).toFixed(3);
+  document.getElementById('sMissing').textContent = `${missingCount}/${entries.length}`;
+  document.getElementById('sMissRate').textContent = '-';
   positionStats();
 }
 

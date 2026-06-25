@@ -171,6 +171,21 @@ ndb_pref_agg <- ndb_all |>
   summarise(total_count = if (all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
             .groups = "drop")
 
+# 国の総計(秘匿前の真の全国値)= 総計列(外来+入院)。欠損レコード率の算出に使用。
+# 総計は各診療行為コード×シートで全都道府県行に同値が入るため first() で取得し、外来+入院を合算。
+ndb_national_agg <- ndb_all |>
+  filter(!is.na(procedure_code), procedure_code != "") |>
+  mutate(total_num = case_when(
+    total %in% c("-", "‐", "－", "―") ~ NA_real_,
+    total == "" | is.na(total) ~ NA_real_,
+    TRUE ~ suppressWarnings(as.numeric(total))
+  )) |>
+  group_by(procedure_code, fy_year, sheet) |>
+  summarise(sheet_total = first(total_num), .groups = "drop") |>
+  group_by(procedure_code, fy_year) |>
+  summarise(national_total = if (all(is.na(sheet_total))) NA_real_ else sum(sheet_total, na.rm = TRUE),
+            .groups = "drop")
+
 # =============================================================================
 # 2. NDB二次医療圏データ パース
 # =============================================================================
@@ -603,6 +618,9 @@ for (pf in phys_files) {
   if (length(year_match) == 0) next
   yr <- as.integer(sub("\\.csv$", "", year_match))
 
+  # 診療科別(医療施設従事)表(第43/24/25/26表)は放射線科医抽出専用。都道府県医師数総数には使わない。
+  if (grepl("(T24|T25|T26|T43)", basename(pf))) next
+
   lines <- read_cp932(pf)
 
   # T25形式(2022): "01北海道" (半角2桁+名前), col2=総数
@@ -760,66 +778,67 @@ cat("\n=== 5c. 放射線科医 ===\n")
 rad_doctor_pref <- list()
 rad_doctor_sma <- list()
 
-# --- T25(2022)/T26(2024)形式: col37=放射線科 (headcount, pref+SMA+municipality) ---
-# 2024年版(第26表)は2022年版(第25表)と同一列構成(col37=放射線科)のため共通処理。
-collect_rad_t25_t26 <- function(file_path, yr) {
+# --- 放射線科医: 医師統計の都道府県×診療科(複数回答, 医療施設従事)表から放射線科を抽出 ---
+# 全隔年(2014/16/18/20/22/24)を同一基準(医療施設従事=病院+診療所・複数回答)で取得。
+# 表番号・列位置・行レイアウトが年で異なる:
+#   2014/16=第43表, 2018/20=閲覧第24表, 2022=第25表, 2024=第26表
+#   放射線科の列: 2014/16/18/22/24=col37, 2020=col40(診療科追加でずれ)
+#   県名: 2014-2020=全角("０１　北　海　道"/"０１北海道"), 2022/24=半角("01北海道")
+#   2020のみ col1="医療施設従事"・県コードがcol2 と列構成が異なる
+# → 放射線科の列はヘッダから検出し、県コードは先頭数列から正規化して判定(全年対応)。
+collect_rad_specialty <- function(file_path, yr) {
   pref <- list(); sma <- list()
-  if (file.exists(file_path)) {
-    d <- read.csv(file_path, header = FALSE, fileEncoding = "CP932",
-                  stringsAsFactors = FALSE)
-    for (r in 5:nrow(d)) {
-      col1 <- trimws(d[r, 1])
-      val_str <- trimws(as.character(d[r, 37]))
-      val <- suppressWarnings(as.integer(val_str))
-      if (!is.na(val_str) && val_str == "-") val <- 0L
-
-      # Prefecture: 2-digit code + non-digit (e.g. "01北海道")
-      if (grepl("^(0[1-9]|[1-3][0-9]|4[0-7])[^0-9]", col1) && !is.na(val)) {
-        pref[[length(pref) + 1]] <- data.frame(
-          pref_code = substr(col1, 1, 2), year = yr, rad_doctors = val,
-          stringsAsFactors = FALSE)
-      }
-      # SMA: exactly 4-digit code + non-digit (e.g. "0101南渡島")
-      leading <- regmatches(col1, regexpr("^[0-9]+", col1))
-      if (length(leading) > 0 && nchar(leading) == 4 && !is.na(val)) {
-        sma[[length(sma) + 1]] <- data.frame(
-          sma_code = leading, year = yr, rad_doctors = val,
-          stringsAsFactors = FALSE)
-      }
+  if (!file.exists(file_path)) return(list(pref = pref, sma = sma))
+  zen <- c("０","１","２","３","４","５","６","７","８","９")
+  normz <- function(s) {
+    s <- as.character(s); if (length(s) == 0 || is.na(s)) return("")
+    for (k in seq_along(zen)) s <- gsub(zen[k], k - 1, s, fixed = TRUE)
+    gsub(" ", "", gsub("　", "", s), fixed = TRUE)
+  }
+  d <- read.csv(file_path, header = FALSE, fileEncoding = "CP932", stringsAsFactors = FALSE)
+  nc <- ncol(d)
+  # 放射線科の列をヘッダ行(上位8行)から完全一致で検出
+  radcol <- NA_integer_
+  for (hr in 1:min(8, nrow(d))) {
+    for (cc in 1:nc) {
+      v <- gsub("　", "", trimws(as.character(d[hr, cc])))
+      if (!is.na(v) && v == "放射線科") { radcol <- cc; break }
     }
+    if (!is.na(radcol)) break
+  }
+  if (is.na(radcol)) {
+    cat(sprintf("    WARNING: 放射線科 列が見つかりません: %s\n", basename(file_path)))
+    return(list(pref = pref, sma = sma))
+  }
+  for (r in seq_len(nrow(d))) {
+    code <- NA_character_; is_sma <- FALSE
+    for (cc in 1:min(3, nc)) {                    # 県コードは先頭数列のいずれか
+      cell <- normz(d[r, cc])
+      if (grepl("^(0[1-9]|[1-3][0-9]|4[0-7])[^0-9]", cell)) { code <- substr(cell, 1, 2); is_sma <- FALSE; break }
+      lead <- regmatches(cell, regexpr("^[0-9]+", cell))
+      if (length(lead) > 0 && nchar(lead) == 4) { code <- lead; is_sma <- TRUE; break }
+    }
+    if (is.na(code)) next
+    vs <- trimws(as.character(d[r, radcol]))
+    val <- suppressWarnings(as.integer(vs))
+    if (!is.na(vs) && vs == "-") val <- 0L
+    if (is.na(val)) next
+    rec <- data.frame(code = code, year = yr, rad_doctors = val, stringsAsFactors = FALSE)
+    if (is_sma) { names(rec)[1] <- "sma_code"; sma[[length(sma) + 1]] <- rec }
+    else        { names(rec)[1] <- "pref_code"; pref[[length(pref) + 1]] <- rec }
   }
   list(pref = pref, sma = sma)
 }
 
-for (rt in list(list(f = "physician_T25_2022.csv", y = 2022L),
+for (rt in list(list(f = "physician_T43_2014.csv", y = 2014L),
+                list(f = "physician_T43_2016.csv", y = 2016L),
+                list(f = "physician_T24_2018.csv", y = 2018L),
+                list(f = "physician_T24_2020.csv", y = 2020L),
+                list(f = "physician_T25_2022.csv", y = 2022L),
                 list(f = "physician_T26_2024.csv", y = 2024L))) {
-  res <- collect_rad_t25_t26(file.path(data_dir, "physician", rt$f), rt$y)
+  res <- collect_rad_specialty(file.path(data_dir, "physician", rt$f), rt$y)
   rad_doctor_pref <- c(rad_doctor_pref, res$pref)
   rad_doctor_sma  <- c(rad_doctor_sma,  res$sma)
-}
-
-# --- G17_2014: FTE physician by specialty, col36=放射線科(男), col79=放射線科(女) ---
-g17_file <- file.path(data_dir, "facility/facility_fte_physician_pref_G17_2014.csv")
-if (file.exists(g17_file)) {
-  d <- read.csv(g17_file, header = FALSE, fileEncoding = "CP932",
-                stringsAsFactors = FALSE)
-  # Find row with 全国
-  nat_row <- which(grepl("^全", trimws(d[[1]])))[1]
-  if (!is.na(nat_row) && ncol(d) >= 79) {
-    for (pi in 1:47) {
-      r <- nat_row + pi
-      if (r > nrow(d)) break
-      pc <- sprintf("%02d", pi)
-      male <- suppressWarnings(as.numeric(trimws(as.character(d[r, 36]))))
-      female <- suppressWarnings(as.numeric(trimws(as.character(d[r, 79]))))
-      total <- sum(c(male, female), na.rm = TRUE)
-      if (total > 0) {
-        rad_doctor_pref[[length(rad_doctor_pref) + 1]] <- data.frame(
-          pref_code = pc, year = 2014L, rad_doctors = as.integer(round(total)),
-          stringsAsFactors = FALSE)
-      }
-    }
-  }
 }
 
 rad_doctor_pref_df <- if (length(rad_doctor_pref) > 0) {
@@ -1532,6 +1551,16 @@ for (i in seq_len(nrow(ndb_pref_agg))) {
   ndb_pref_counts[[proc]][[pc]][[yr]] <- if (is.na(val)) NA_real_ else val
 }
 
+# --- 9b-2. NDB国の総計(秘匿前の真の全国値; 全国合計表示・欠損レコード率算出用) ---
+ndb_national_counts <- list()
+for (i in seq_len(nrow(ndb_national_agg))) {
+  proc <- ndb_national_agg$procedure_code[i]
+  yr <- as.character(ndb_national_agg$fy_year[i])
+  val <- ndb_national_agg$national_total[i]
+  if (is.null(ndb_national_counts[[proc]])) ndb_national_counts[[proc]] <- list()
+  ndb_national_counts[[proc]][[yr]] <- if (is.na(val)) NA_real_ else val
+}
+
 # --- 9c. NDB二次医療圏カウント ---
 ndb_sma_counts <- list()
 if (nrow(ndb_sma_agg) > 0) {
@@ -1699,7 +1728,7 @@ web_data <- list(
   ndb = list(
     codes = codes_hierarchy,
     years = 2014:2024,
-    counts = list(pref = ndb_pref_counts
+    counts = list(pref = ndb_pref_counts, national = ndb_national_counts
       # [v2.0-sma-disabled] , sma = ndb_sma_counts
     ),
     scr = list(pref = scr_nested)
