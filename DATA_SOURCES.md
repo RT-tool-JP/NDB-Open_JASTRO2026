@@ -13,7 +13,7 @@
 - **ポータルページ**: https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177182.html
 - **対象**: 医科診療行為 M放射線治療 都道府県別算定回数
 - **ファイル形式**: XLSX（Excel）※ CSVではない
-- **収録年度**: 第1回（H26/FY2014）〜第10回（R5/FY2023）
+- **収録年度**: 第1回（H26/FY2014）〜第11回（R6/FY2024）
 
 ### 各回のページURL
 
@@ -29,8 +29,20 @@
 | 8 | R03 (FY2021) | https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177221_00012.html |
 | 9 | R04 (FY2022) | https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177221_00014.html |
 | 10 | R05 (FY2023) | https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177221_00016.html |
+| 11 | R06 (FY2024) | https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177221_00017.html |
 
-### ダウンロードURL（M放射線治療 都道府県別算定回数）
+> **【重要】第11回（FY2024）からの配布形式変更**
+> 第10回までは集計軸ごとに個別の xlsx 直リンクが公開されていたが、**第11回からは「医科診療行為（算定回数）」が 1 つの ZIP に一括化**された（個別 xlsx 直リンク廃止）。
+> - 公費レセプトを**含まない**データ（本プロジェクト採用）: `https://www.mhlw.go.jp/content/12400000/001712210.zip`（約 27.5MB）
+> - 公費レセプトを**含む**データ: `https://www.mhlw.go.jp/content/12400000/001712211.zip`
+> - ZIP 内パス: `01_医科診療行為/<大分類>/<軸>算定回数.xlsx`（ファイル名は Shift-JIS）
+>   - M放射線治療: `M_放射線治療/{都道府県別,性年齢別,二次医療圏別}算定回数.xlsx`
+>   - K手術: `K_手術/款別{都道府県別,性年齢別,二次医療圏別}算定回数.xlsx`（「款別」プレフィックス付き。`K_輸血料`フォルダと混同しない）
+>   - D検査: `D_検査/{都道府県別,性年齢別,二次医療圏別}算定回数.xlsx`
+> - 内部レイアウト（シート構成・列構造）は第10回までと互換のため、集計パーサ（`10_prepare_web_data.R`）は無改修。
+> - 抽出は `scripts/extract_ndb11_zip.py`（Shift-JIS 対応）が担当し、従来命名 `ndb11_<section>_2024.xlsx` で配置する。
+
+### ダウンロードURL（M放射線治療 都道府県別算定回数）※第1〜10回（第11回は上記 ZIP）
 
 | 回 | 年度 | 保存ファイル名 | ダウンロードURL |
 |---:|------|---------------|----------------|
@@ -117,6 +129,10 @@ e-Stat の file-download エンドポイントから `statInfId` と `fileKind=0
 | 2014 | 2010-2014 | 000029026254 | `population_pref_2014.xls` | https://www.e-stat.go.jp/stat-search/file-download?statInfId=000029026254&fileKind=0 |
 | 2019 | 2015-2019 | 000031921674 | `population_pref_2019.xls` | https://www.e-stat.go.jp/stat-search/file-download?statInfId=000031921674&fileKind=0 |
 | 2023 | 2015,2020-2023 | 000040166077 | `population_pref_2023.xlsx` | https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040166077&fileKind=0 |
+| 2024 | 2020-2024 | 000040268859 | `population_total_pref_2024.xlsx` | https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040268859&fileKind=0 |
+
+> **年齢5歳階級別（65歳以上人口の算出用, 第10表）**: 2024年版は statInfId=`000040268918`（列 30〜34 = 65歳以上）。
+> **2024年版の追加統計**: 医師・歯科医師・薬剤師統計 2024（都道府県別=`000040383754`、二次医療圏×診療科 放射線科医=`000040383778`, ともに fileKind=1）。医療施設動態調査 病院数 2024（都道府県編 第1表=`000040321933`, fileKind=1）。
 
 3ファイルを組み合わせて2014〜2023年の全10年分を構成:
 

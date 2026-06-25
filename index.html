@@ -279,23 +279,23 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       <button class="disclaimer-close" onclick="closeReshowDisclaimer()" title="閉じる" aria-label="閉じる">&times;</button>
     </div>
     <div class="disclaimer-body" id="disclaimerBody">
-      <p>本サイトは、以下の公的データを基に放射線治療に関する算定回数・医療資源を都道府県別・二次医療圏別に可視化する非公式の簡易解析ツールです。</p>
+      <p>本サイトは、以下の公的データを基に放射線治療に関する算定回数・医療資源を都道府県別に可視化する非公式の簡易解析ツールです。</p>
       <h3>データ引用元</h3>
       <p><b>1. 厚生労働省「NDBオープンデータ」</b><br>
       <a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177182.html" target="_blank" rel="noopener">https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177182.html</a><br>
-      レセプト情報・特定健診等情報データベース（NDB）より作成された集計表データ（第1回〜第10回、FY2014〜FY2023）を使用しています。</p>
-      <p><b>2. 厚生労働省「医療施設調査（静態調査）」</b><br>
+      レセプト情報・特定健診等情報データベース（NDB）より作成された集計表データ（第1回〜第11回、FY2014〜FY2024）を使用しています。</p>
+      <p><b>2. 厚生労働省「医療施設調査」</b><br>
       <a href="https://www.e-stat.go.jp/stat-search/files?toukei=00450021" target="_blank" rel="noopener">https://www.e-stat.go.jp/stat-search/files?toukei=00450021</a><br>
-      病院数、放射線治療設備（リニアック台数等）、従事者数（看護師・診療放射線技師）のデータを使用しています（静態調査: 2014, 2017, 2020, 2023年）。</p>
+      病院数（動態調査・各年〜2024年）、放射線治療設備（リニアック台数等）・従事者数（看護師・診療放射線技師）（静態調査: 2014, 2017, 2020, 2023年）のデータを使用しています。</p>
       <p><b>3. 厚生労働省「医師・歯科医師・薬剤師統計」</b><br>
       <a href="https://www.e-stat.go.jp/stat-search/files?toukei=00450026" target="_blank" rel="noopener">https://www.e-stat.go.jp/stat-search/files?toukei=00450026</a><br>
-      放射線科医数のデータを使用しています（2014, 2022年）。</p>
+      医師数・放射線科医数のデータを使用しています（医師数: 2014・2016・2018・2020・2022・2024年、放射線科医数: 2014・2022・2024年）。</p>
       <p><b>4. 総務省統計局「人口推計」</b><br>
       <a href="https://www.stat.go.jp/data/jinsui/index.html" target="_blank" rel="noopener">https://www.stat.go.jp/data/jinsui/index.html</a><br>
-      都道府県別人口データを使用しています。</p>
+      都道府県別の総人口・65歳以上人口を使用しています。65歳以上人口の2015年・2020年は元データが整備されていないため、前後年からの補間値を用いています。</p>
       <p><b>5. 国土交通省「国土数値情報」</b><br>
       <a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">https://nlftp.mlit.go.jp/ksj/</a><br>
-      行政区域データ（N03）および二次医療圏データ（A38）を使用しています。</p>
+      行政区域データ（N03、都道府県境界）を使用しています。</p>
       <h3>データの秘匿処理について</h3>
       <p>NDBオープンデータでは「匿名医療保険等関連情報データベース（NDB）の提供に関するガイドライン」の最小集計単位の原則に基づき、都道府県別の算定回数が<b>10未満</b>の場合は値が秘匿（「-」表示）されています。</p>
       <p>また、秘匿値が1箇所のみとなり合計値から逆算可能となる場合には、10以上の最小値も追加で秘匿される処理が施されています。このため、特定の診療行為・年度においては、多くの都道府県または全都道府県でデータが欠損する場合があります。</p>
@@ -305,7 +305,6 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
         <li>本サイトは個人が作成した非公式ツールであり、厚生労働省・総務省・国土交通省とは一切関係ありません。</li>
         <li>表示される値には集計処理上の誤りが含まれる可能性があります。正確な数値は必ず上記の原典データをご確認ください。</li>
         <li>医療施設調査の設備・従事者データは静態調査（3年毎）のため、中間年は直近調査の値を参考表示しています。</li>
-        <li>二次医療圏の人口データは国土数値情報A38（国勢調査ベース）に基づく固定値であり、年次変動は反映されていません。</li>
         <li>本サイトの情報を利用したことにより生じたいかなる損害についても、作成者は一切の責任を負いません。</li>
         <li>本サイトの利用は利用者自身の責任において行ってください。</li>
       </ul>
@@ -376,8 +375,8 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       </div>
       <div class="panel" id="yearPanel">
         <h3>年度</h3>
-        <div class="year-disp" id="yearDisp">2023<span>年度</span></div>
-        <input type="range" id="yearSlider" min="2014" max="2023" value="2023" step="1">
+        <div class="year-disp" id="yearDisp">2024<span>年度</span></div>
+        <input type="range" id="yearSlider" min="2014" max="2024" value="2024" step="1">
         <div class="year-ticks" id="yearTicks"></div>
         <div class="year-source" id="yearSource" style="display:none"></div>
         <div class="play-row">
@@ -395,7 +394,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       </div>
       <div style="font-size:9px;color:var(--text-ll);line-height:1.6;padding:0 4px">
         データ: 厚生労働省 NDBオープンデータ / 医療施設調査 / 医師・歯科医師・薬剤師統計 / 総務省 人口推計<br>
-        地図: 国土交通省 国土数値情報 (N03, A38)<br>
+        地図: 国土交通省 国土数値情報 (N03)<br>
         注: NDB算定回数は10未満の値が秘匿処理されています
       </div>
     </aside>
@@ -564,7 +563,7 @@ let PROC_LOOKUP = {};
 
 /* Shared state (applies to both A and B) */
 let curDenom = 'pop100k';
-let curYear = 2023;
+let curYear = 2024;
 
 /* Display mode: 'A' | 'B' | 'ratio' | 'trends' */
 let curDisplayMode = 'A';
@@ -1012,16 +1011,29 @@ function updateDenomNote() {
       reason = 'データなし';
     }
     note.textContent = reason + ' → 実数で表示';
-    note.style.display = '';
+    note.style.display = 'block';
   } else if (eff === 'scr') {
-    note.innerHTML = 'SCR: 年齢・性別構成を間接標準化で補正。100=全国平均水準';
-    note.style.display = '';
+    // 秘匿(10未満)を含む都道府県があるとSCRが偏るため、その場合は注釈を付す
+    let warn = '';
+    try {
+      const cfg = curDisplayMode === 'B' ? configB : configA;
+      const vv = calcValsForConfig(cfg, getYear());
+      const masked = Object.values(vv).filter(v => v && v.hasNA).length;
+      if (masked > 0) {
+        warn = `<br><span style="color:#b45309">※ ${masked}都道府県で秘匿値（10未満）を含むため、SCRが過大・過小に偏る可能性があります（秘匿値は0として計算）。</span>`;
+      }
+    } catch (e) {}
+    note.innerHTML = 'SCR: 年齢・性別構成を間接標準化で補正。100=全国平均水準' + warn;
+    note.style.display = 'block';
   } else if (curDenom === 'per_rad_doctor') {
-    note.textContent = '放射線科医数: 2014, 2022年のみ';
-    note.style.display = '';
+    note.textContent = '放射線科医数: 2014, 2022, 2024年のみ';
+    note.style.display = 'block';
   } else if (curDenom === 'per_nurse' || curDenom === 'per_rad_tech') {
     note.textContent = 'スタッフ数(常勤換算): 2017,2020,2023年のみ(静態調査)';
-    note.style.display = '';
+    note.style.display = 'block';
+  } else if (curDenom === 'eld100k' && (getYear() === 2015 || getYear() === 2020)) {
+    note.textContent = `65歳以上人口の${getYear()}年は前後年からの補間値です`;
+    note.style.display = 'block';
   } else {
     note.style.display = 'none';
   }
@@ -1422,6 +1434,7 @@ function updateMap(recomputeScale = true) {
     updateMapSingle(yr, show, recomputeScale);
   }
   updateYearSource(yr);
+  updateDenomNote();  // SCR等の注釈を現在の年・診療行為に応じて更新
 }
 
 function detectDataYears(cfg, yr) {
@@ -1959,9 +1972,11 @@ function updateStats(vals, isRatio) {
     avg = valid.length > 0 ? totalNum / valid.length : 0;
   } else {
     const withDenom = valid.filter(([_,v]) => v.denomRaw != null && v.denomRaw > 0);
+    // 分子も分母有効な地域に限定（人口加重の全国平均率を分子・分母で整合させる）
+    const numWithDenom = withDenom.reduce((s,[_,v]) => s + v.num, 0);
     const totalDenom = withDenom.reduce((s,[_,v]) => s + v.denomRaw, 0);
-    const mul = valid[0]?.denomMul || 1;
-    avg = totalDenom > 0 ? totalNum / totalDenom * mul : 0;
+    const mul = getDenomMul();  // valid[0] は [code,value] ペアのため .denomMul は取れない
+    avg = totalDenom > 0 ? numWithDenom / totalDenom * mul : 0;
   }
 
   let maxV=0, minV=Infinity, maxPr='-', minPr='-';
@@ -2162,7 +2177,7 @@ function startAnim() {
   const btn = document.getElementById('playBtn'); btn.innerHTML = '&#9632; 停止'; btn.classList.add('active');
   const sp = +document.getElementById('speedSel').value, sl = document.getElementById('yearSlider');
   animTimer = setInterval(() => {
-    let y = +sl.value; y = y >= 2023 ? 2014 : y + 1;
+    let y = +sl.value; const yMin = +sl.min, yMax = +sl.max; y = y >= yMax ? yMin : y + 1;
     sl.value = y; curYear = y;
     document.getElementById('yearDisp').innerHTML = y + '<span>年度</span>'; updateMap(false);
   }, sp);
@@ -2300,6 +2315,15 @@ function setupControls() {
     }
   });
   const sl = document.getElementById('yearSlider');
+  // 年スライダの範囲をデータ(DATA.ndb.years)から自動導出（年度追加時に無改修化）
+  const ndbYears = (DATA && DATA.ndb && DATA.ndb.years) ? DATA.ndb.years : [];
+  if (ndbYears.length) {
+    const yMin = ndbYears[0], yMax = ndbYears[ndbYears.length - 1];
+    sl.min = yMin; sl.max = yMax; sl.step = 1;
+    if (curYear < yMin || curYear > yMax) curYear = yMax;
+    sl.value = curYear;
+    document.getElementById('yearDisp').innerHTML = curYear + '<span>年度</span>';
+  }
   sl.addEventListener('input', () => {
     curYear = +sl.value;
     document.getElementById('yearDisp').innerHTML = sl.value+'<span>年度</span>';

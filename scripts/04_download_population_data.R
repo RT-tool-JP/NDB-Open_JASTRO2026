@@ -33,7 +33,11 @@ total_pop_files <- list(
        format = "xls", years = 2015:2019),
   list(url = estat_url("000040166077"),
        dest = file.path(data_dir, "population_total_pref_2023.xlsx"),
-       format = "xlsx", years = c(2015, 2020:2023))
+       format = "xlsx", years = c(2015, 2020:2023)),
+  # 2024年(令和6年)版: 第5表 各年版(2025-04-14公表)。列14〜18 = 2020〜2024年。
+  list(url = estat_url("000040268859"),
+       dest = file.path(data_dir, "population_total_pref_2024.xlsx"),
+       format = "xlsx", years = c(2020:2024))
 )
 
 # =============================================================================
@@ -50,7 +54,9 @@ age_group_files <- list(
   list(year = 2020, id = "000032153670", format = "xlsx", is_census = TRUE),
   list(year = 2021, id = "000032191051", format = "xlsx", is_census = FALSE),  # 拡張子と実形式の不整合修正
   list(year = 2022, id = "000040045496", format = "xlsx", is_census = FALSE),
-  list(year = 2023, id = "000040166082", format = "xlsx", is_census = FALSE)
+  list(year = 2023, id = "000040166082", format = "xlsx", is_census = FALSE),
+  # 2024年(令和6年)版: 第10表 5歳階級別(2025-04-14公表)。列30〜34 = 65歳以上。
+  list(year = 2024, id = "000040268918", format = "xlsx", is_census = FALSE)
 )
 
 # =============================================================================

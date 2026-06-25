@@ -267,4 +267,62 @@ for (sec in sexage_sections) {
   cat("\n")
 }
 
+# =============================================================================
+# 第11回(FY2024)以降: 医科診療行為(算定回数) ZIP一括配布への対応
+#   第11回からファイル配布形式がZIP一括化された(個別xlsx直リンク廃止)。
+#   ZIPをDLし、Pythonヘルパー(extract_ndb11_zip.py)で3指標×3軸=9ファイルを
+#   従来命名(ndb11_<section>_2024.xlsx)で配置する。
+#   ZIP内ファイル名がShift-JISのため、UTF-8 native R(>=4.2)では正しく解凍できず、
+#   cp932を確実に扱えるPythonに抽出を委譲する。
+# =============================================================================
+cat("=== 第11回(FY2024) ZIP一括ダウンロード・抽出 ===\n\n")
+
+# 公費レセプトを「含まない」データ(第1〜10回の個別xlsxと同等。プロジェクト方針)
+ndb11_zip_url <- "https://www.mhlw.go.jp/content/12400000/001712210.zip"
+
+ndb11_targets <- c(
+  file.path(data_dir, "ndb_pref/M_radiation_pref/ndb11_M_radiation_pref_2024.xlsx"),
+  file.path(data_dir, "ndb_pref/M_radiation_sexage/ndb11_M_radiation_sexage_2024.xlsx"),
+  file.path(data_dir, "ndb_sma/M_radiation_sma/ndb11_M_radiation_sma_2024.xlsx"),
+  file.path(data_dir, "ndb_pref/K_surgery_pref/ndb11_K_surgery_pref_2024.xlsx"),
+  file.path(data_dir, "ndb_pref/K_surgery_sexage/ndb11_K_surgery_sexage_2024.xlsx"),
+  file.path(data_dir, "ndb_sma/K_surgery_sma/ndb11_K_surgery_sma_2024.xlsx"),
+  file.path(data_dir, "ndb_pref/D_exam_pref/ndb11_D_exam_pref_2024.xlsx"),
+  file.path(data_dir, "ndb_pref/D_exam_sexage/ndb11_D_exam_sexage_2024.xlsx"),
+  file.path(data_dir, "ndb_sma/D_exam_sma/ndb11_D_exam_sma_2024.xlsx")
+)
+
+if (all(file.exists(ndb11_targets))) {
+  cat("第11回 9ファイルは抽出済み => skip\n\n")
+} else {
+  zip_dir <- file.path(data_dir, "_ndb_zip")
+  dir.create(zip_dir, recursive = TRUE, showWarnings = FALSE)
+  zip_path <- file.path(zip_dir, "ndb11_iryo_santei_kohi_nashi_2024.zip")
+
+  if (!file.exists(zip_path) || file.size(zip_path) < 1e6) {
+    cat(sprintf("ZIP ダウンロード中... (%s)\n", basename(zip_path)))
+    tryCatch({
+      download.file(ndb11_zip_url, zip_path, mode = "wb", quiet = TRUE)
+      cat(sprintf("  OK (%s bytes)\n", format(file.size(zip_path), big.mark = ",")))
+    }, error = function(e) cat(sprintf("  ERROR: %s\n", e$message)))
+  } else {
+    cat(sprintf("ZIP は取得済み => skip (%s)\n", basename(zip_path)))
+  }
+
+  # Pythonヘルパーで9ファイルを抽出(Shift-JIS名対応)
+  helper <- file.path(getwd(), "scripts", "extract_ndb11_zip.py")
+  py <- Sys.which("python")
+  if (py == "") py <- Sys.which("python3")
+  if (py == "") {
+    cat("WARNING: python が見つかりません。第11回ZIPの抽出をスキップしました。\n")
+    cat("  手動で実行してください:\n")
+    cat(sprintf("  python \"%s\" \"%s\" \"%s\" 11 2024\n", helper, zip_path, data_dir))
+  } else if (file.exists(zip_path)) {
+    cat("Python抽出ヘルパー実行中...\n")
+    status <- system2(py, c(shQuote(helper), shQuote(zip_path), shQuote(data_dir), "11", "2024"))
+    if (status != 0) cat("WARNING: 抽出ヘルパーがエラーを返しました。出力を確認してください。\n")
+  }
+  cat("\n")
+}
+
 cat("=== NDB ダウンロード完了 ===\n")

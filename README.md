@@ -13,7 +13,7 @@ NDB（レセプト情報・特定健診等情報データベース）オープ�
 - **分母の選択（9 種）**: 実数 / 人口10万 / 65歳以上人口10万 / SCR（年齢・性別調整） / リニアック1台 / 病院1施設 / 放射線科医1人 / 看護師1人(常勤換算) / 放射線技師1人(常勤換算)
 - **配色**: 7 種の sequential + 4 種の diverging + カスタムカラー。表示A/表示B/A・B比 で独立に保持
 - **凡例コントロール**: デュアルレンジスライダ、min/max 手動指定、自動/手動切替
-- **年度スライダー**: 2014〜2023 年度、自動再生
+- **年度スライダー**: 2014〜2024 年度、自動再生（範囲はデータから自動導出）
 - **統計パネル**: 全国合計・平均・四分位・IQR・ジニ係数・変動係数
 - **CSV ダウンロード**: 表示中データの CSV エクスポート（年次推移モードでは全年度集計版）
 - **免責事項**: 起動時オーバーレイ＋サイドバーから再表示可能
@@ -46,6 +46,7 @@ NDB-Open_2026JASTRO/
 │   ├── 03_download_physician_data.R    医師・歯科医師・薬剤師統計
 │   ├── 04_download_population_data.R   人口推計（総人口＋5歳階級別）
 │   ├── 05_download_geo_data.R          地理データ（都道府県 GeoJSON）
+│   ├── extract_ndb11_zip.py            第11回以降 ZIP からの xlsx 抽出（Shift-JIS 対応）
 │   └── 10_prepare_web_data.R           統合 JSON 生成
 ├── rawdata_dl/                 R が落とした生データ（gitignore）
 ├── _legacy/                    v1.00 退避（参照用、index.html 等）
@@ -88,6 +89,10 @@ source("scripts/10_prepare_web_data.R")         # → data/dashboard_data.json
 install.packages(c("readxl","dplyr","tidyr","stringr","zoo","jsonlite","foreign","sf"))
 ```
 
+### Python（第11回以降のみ）
+
+第11回（FY2024）から NDB の医科診療行為（算定回数）が ZIP 一括配布に変更されました。ZIP 内のファイル名が Shift-JIS（cp932）で格納されており、UTF-8 ネイティブの R（Windows / R ≥ 4.2）の `unzip()` では正しく取り出せないため、`01_download_ndb_data.R` は標準ライブラリのみの Python ヘルパー `scripts/extract_ndb11_zip.py` を呼び出して 9 ファイル（3 指標 × 3 集計軸）を抽出します。Python 3 が PATH 上に必要です（追加パッケージ不要）。
+
 ## データソース
 
 - **NDB Open Data**: 厚生労働省 https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177182.html
@@ -106,5 +111,6 @@ install.packages(c("readxl","dplyr","tidyr","stringr","zoo","jsonlite","foreign"
 
 ## バージョン履歴
 
+- **v2.1** (2026-06-25): NDB オープンデータ第11回（FY2024）に対応。人口推計 2024・医師統計 2024・医療施設動態調査 病院数 2024 を追加。第11回からの ZIP 一括配布形式に対応（`scripts/extract_ndb11_zip.py`）。年スライダーをデータ駆動化（範囲を `DATA.ndb.years` から自動導出）。
 - **v2.0** (2026-05-25): 試験版ベースに刷新。A/B 切替・A/B 比・年次推移モード、施設指標、分母 9 種を追加。
 - **v1.00** (2026-02-13): 初期リリース。NDB 算定回数の人口10万あたりマップ。

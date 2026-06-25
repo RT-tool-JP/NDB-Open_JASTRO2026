@@ -44,7 +44,7 @@ read_cp932 <- function(filepath) {
 # =============================================================================
 cat("=== 1. NDB都道府県データ ===\n")
 
-ndb_meta <- data.frame(edition = 1:10, fy_year = 2014:2023, stringsAsFactors = FALSE)
+ndb_meta <- data.frame(edition = 1:11, fy_year = 2014:2024, stringsAsFactors = FALSE)
 
 section_defs <- list(
   list(label = "M放射線治療", dir = file.path(data_dir, "ndb_pref/M_radiation_pref"),
@@ -252,7 +252,7 @@ sma_section_defs <- list(
        prefix = "D_exam_sma", filter = "^D(413|009)$")
 )
 
-sma_editions <- data.frame(edition = 6:10, fy_year = 2019:2023, stringsAsFactors = FALSE)
+sma_editions <- data.frame(edition = 6:11, fy_year = 2019:2024, stringsAsFactors = FALSE)
 
 sma_data <- list()
 for (sec in sma_section_defs) {
@@ -613,6 +613,38 @@ for (pf in phys_files) {
 
   is_t25 <- grepl("T25", basename(pf))
 
+  # 第3表(2014)特例: 都道府県は全角コード"０１　北　海　道"の名称行で表され、
+  # 届出総数は直後の "総数,総数,<値>" 行の col3 にある(名称行の col2-6 は空)。
+  # 汎用処理では名称行で数値が拾えず、年齢階級行を誤マッチするため専用に抽出する。
+  is_t03 <- grepl("T03", basename(pf))
+  if (is_t03) {
+    zen3 <- c("０","１","２","３","４","５","６","７","８","９"); han3 <- as.character(0:9)
+    for (i in seq_along(lines)) {
+      parts <- strsplit(lines[i], ",")[[1]]
+      if (length(parts) < 1) next
+      col1 <- trimws(parts[1])
+      m <- regmatches(col1, regexpr("^[０-９]{2}", col1))
+      if (length(m) == 0) next
+      code_str <- m
+      for (k in seq_along(zen3)) code_str <- gsub(zen3[k], han3[k], code_str)
+      pref_code <- substr(code_str, 1, 2)
+      if (!(pref_code %in% pref_codes)) next
+      for (j in (i + 1):min(i + 3, length(lines))) {
+        p2 <- strsplit(lines[j], ",")[[1]]
+        if (length(p2) >= 3 && trimws(gsub("　", "", p2[2])) == "総数") {
+          total <- suppressWarnings(as.numeric(trimws(p2[3])))
+          if (!is.na(total) && total > 0) {
+            physician_pref[[length(physician_pref) + 1]] <- data.frame(
+              pref_code = pref_code, year = yr, physicians = as.integer(total),
+              stringsAsFactors = FALSE)
+          }
+          break
+        }
+      }
+    }
+    next
+  }
+
   for (i in seq_along(lines)) {
     parts <- strsplit(lines[i], ",")[[1]]
     if (length(parts) < 2) next
@@ -728,37 +760,42 @@ cat("\n=== 5c. 放射線科医 ===\n")
 rad_doctor_pref <- list()
 rad_doctor_sma <- list()
 
-# --- T25_2022: col37=放射線科 (headcount, pref+SMA+municipality) ---
-t25_file <- file.path(data_dir, "physician/physician_T25_2022.csv")
-if (file.exists(t25_file)) {
-  d <- read.csv(t25_file, header = FALSE, fileEncoding = "CP932",
-                stringsAsFactors = FALSE)
-  for (r in 5:nrow(d)) {
-    col1 <- trimws(d[r, 1])
-    val_str <- trimws(as.character(d[r, 37]))
-    val <- suppressWarnings(as.integer(val_str))
-    if (val_str == "-") val <- 0L
+# --- T25(2022)/T26(2024)形式: col37=放射線科 (headcount, pref+SMA+municipality) ---
+# 2024年版(第26表)は2022年版(第25表)と同一列構成(col37=放射線科)のため共通処理。
+collect_rad_t25_t26 <- function(file_path, yr) {
+  pref <- list(); sma <- list()
+  if (file.exists(file_path)) {
+    d <- read.csv(file_path, header = FALSE, fileEncoding = "CP932",
+                  stringsAsFactors = FALSE)
+    for (r in 5:nrow(d)) {
+      col1 <- trimws(d[r, 1])
+      val_str <- trimws(as.character(d[r, 37]))
+      val <- suppressWarnings(as.integer(val_str))
+      if (!is.na(val_str) && val_str == "-") val <- 0L
 
-    # Prefecture: 2-digit code + non-digit (e.g. "01北海道")
-    if (grepl("^(0[1-9]|[1-3][0-9]|4[0-7])[^0-9]", col1)) {
-      pc <- substr(col1, 1, 2)
-      if (!is.na(val)) {
-        rad_doctor_pref[[length(rad_doctor_pref) + 1]] <- data.frame(
-          pref_code = pc, year = 2022L, rad_doctors = val,
+      # Prefecture: 2-digit code + non-digit (e.g. "01北海道")
+      if (grepl("^(0[1-9]|[1-3][0-9]|4[0-7])[^0-9]", col1) && !is.na(val)) {
+        pref[[length(pref) + 1]] <- data.frame(
+          pref_code = substr(col1, 1, 2), year = yr, rad_doctors = val,
           stringsAsFactors = FALSE)
       }
-    }
-    # SMA: exactly 4-digit code + non-digit (e.g. "0101南渡島")
-    leading <- regmatches(col1, regexpr("^[0-9]+", col1))
-    if (length(leading) > 0 && nchar(leading) == 4) {
-      sc <- leading
-      if (!is.na(val)) {
-        rad_doctor_sma[[length(rad_doctor_sma) + 1]] <- data.frame(
-          sma_code = sc, year = 2022L, rad_doctors = val,
+      # SMA: exactly 4-digit code + non-digit (e.g. "0101南渡島")
+      leading <- regmatches(col1, regexpr("^[0-9]+", col1))
+      if (length(leading) > 0 && nchar(leading) == 4 && !is.na(val)) {
+        sma[[length(sma) + 1]] <- data.frame(
+          sma_code = leading, year = yr, rad_doctors = val,
           stringsAsFactors = FALSE)
       }
     }
   }
+  list(pref = pref, sma = sma)
+}
+
+for (rt in list(list(f = "physician_T25_2022.csv", y = 2022L),
+                list(f = "physician_T26_2024.csv", y = 2024L))) {
+  res <- collect_rad_t25_t26(file.path(data_dir, "physician", rt$f), rt$y)
+  rad_doctor_pref <- c(rad_doctor_pref, res$pref)
+  rad_doctor_sma  <- c(rad_doctor_sma,  res$sma)
 }
 
 # --- G17_2014: FTE physician by specialty, col36=放射線科(男), col79=放射線科(女) ---
@@ -866,7 +903,9 @@ pop_files <- list(
   list(path = file.path(data_dir, "population/population_total_pref_2019.xls"),
        years = 2015:2019, format = "xls"),
   list(path = file.path(data_dir, "population/population_total_pref_2023.xlsx"),
-       years = c(2015, 2020:2023), format = "xlsx")
+       years = c(2015, 2020:2023), format = "xlsx"),
+  list(path = file.path(data_dir, "population/population_total_pref_2024.xlsx"),
+       years = c(2020:2024), format = "xlsx")
 )
 
 pop_all <- list()
@@ -1014,6 +1053,42 @@ pop_elderly <- if (length(elderly_all) > 0) {
 
 cat(sprintf("  高齢者人口: %d records (%d years)\n",
             nrow(pop_elderly), n_distinct(pop_elderly$year)))
+
+# 欠測年の補間: 2015(国勢調査年版の取込不可)・2020(ソース欠如時)等を線形補間で補完。
+# 各都道府県について 2014:2024 の欠測年を前後の実測年から線形補間(範囲外は最近接年で外挿)。
+elderly_target_years <- 2014:2024
+if (nrow(pop_elderly) > 0) {
+  interp_rows <- list()
+  interp_years <- integer(0)
+  for (pc in unique(pop_elderly$pref_code)) {
+    sub <- pop_elderly[pop_elderly$pref_code == pc, ]
+    hv <- sub$year
+    vmap <- setNames(sub$population_65plus, as.character(sub$year))
+    for (ty in elderly_target_years) {
+      if (ty %in% hv) next
+      lower <- hv[hv < ty]; upper <- hv[hv > ty]
+      if (length(lower) > 0 && length(upper) > 0) {
+        y0 <- max(lower); y1 <- min(upper)
+        v0 <- vmap[[as.character(y0)]]; v1 <- vmap[[as.character(y1)]]
+        val <- round(v0 + (v1 - v0) * (ty - y0) / (y1 - y0))
+      } else if (length(lower) > 0) {
+        val <- vmap[[as.character(max(lower))]]
+      } else if (length(upper) > 0) {
+        val <- vmap[[as.character(min(upper))]]
+      } else next
+      interp_rows[[length(interp_rows) + 1]] <- data.frame(
+        pref_code = pc, year = ty, population_65plus = val, stringsAsFactors = FALSE)
+      interp_years <- c(interp_years, ty)
+    }
+  }
+  if (length(interp_rows) > 0) {
+    pop_elderly <- bind_rows(pop_elderly, bind_rows(interp_rows)) |>
+      arrange(year, pref_code)
+    cat(sprintf("  高齢者人口(補間後): %d records, 補間 %d 件 (補間年: %s)\n",
+                nrow(pop_elderly), length(interp_rows),
+                paste(sort(unique(interp_years)), collapse = ", ")))
+  }
+}
 
 # --- 6d. 人口（都道府県, 性年齢別 → SCR用）---
 cat("  --- 都道府県人口（性年齢別, SCR用）---\n")
@@ -1176,7 +1251,7 @@ if (!is.null(a38_14) || !is.null(a38_20)) {
     has14 <- nrow(p14) > 0 && !is.na(p14$pop_total[1]) && p14$pop_total[1] > 0
     has20 <- nrow(p20) > 0 && !is.na(p20$pop_total[1]) && p20$pop_total[1] > 0
 
-    for (yr in 2014:2023) {
+    for (yr in 2014:2024) {
       if (has14 && has20) {
         # Linear interpolation between 2013 and 2020, capped at 2020 for yr > 2020
         t <- min(max((yr - a38_ref_year_14) / (a38_ref_year_20 - a38_ref_year_14), 0), 1)
@@ -1623,7 +1698,7 @@ cat(sprintf("  SCR nested: %d procedures\n", length(scr_nested)))
 web_data <- list(
   ndb = list(
     codes = codes_hierarchy,
-    years = 2014:2023,
+    years = 2014:2024,
     counts = list(pref = ndb_pref_counts
       # [v2.0-sma-disabled] , sma = ndb_sma_counts
     ),
