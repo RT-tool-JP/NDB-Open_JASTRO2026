@@ -74,8 +74,14 @@ header .sub{margin-left:14px;font-size:15px;color:var(--text-ll)}
 
 /* Disabled section (used when A/B ratio mode locks the numerator editing UI) */
 .disabled-section{pointer-events:none;opacity:.45}
-.ratio-lock-hint{font-size:13px;color:#92400e;background:var(--warn-lt);border-radius:4px;padding:5px 8px;margin-bottom:6px;display:none}
-.ratio-lock-hint.visible{display:block}
+.ratio-lock-hint{font-size:13px;color:#92400e;background:var(--warn-lt);border-radius:4px;padding:5px 8px;margin-bottom:6px;display:none;align-items:center;gap:6px}
+.ratio-lock-hint.visible{display:flex}
+.ratio-lock-hint .redit-label{white-space:nowrap}
+.ratio-edit-toggle{display:inline-flex;gap:4px;margin-left:auto}
+.redit-btn{font-size:12px;font-weight:600;padding:2px 12px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text-m);cursor:pointer}
+.redit-btn:hover{background:var(--border-lt)}
+.redit-btn.active[data-edit="A"]{background:var(--pri);color:#fff;border-color:var(--pri)}
+.redit-btn.active[data-edit="B"]{background:#7c3aed;color:#fff;border-color:#7c3aed}
 
 /* Hierarchical checkboxes */
 .code-actions{display:flex;gap:5px;margin-bottom:6px}
@@ -351,7 +357,13 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
         </select>
         <div class="denom-note" id="denomNote"></div>
       </div>
-      <div class="ratio-lock-hint" id="ratioLockHint" title="A・B比 モードでは A/B 各々の設定で参照されます">A・B比 モードでは A/B 各々の設定で参照されます</div>
+      <div class="ratio-lock-hint" id="ratioLockHint">
+        <span class="redit-label" id="reditLabel">編集対象:</span>
+        <span class="ratio-edit-toggle">
+          <button class="redit-btn" data-edit="A" onclick="setRatioEditTarget('A')">表示A</button>
+          <button class="redit-btn" data-edit="B" onclick="setRatioEditTarget('B')">表示B</button>
+        </span>
+      </div>
       <div id="numeratorSection">
         <div class="panel" style="padding-bottom:0">
           <div style="display:flex;align-items:center;margin-bottom:4px">
@@ -1160,22 +1172,36 @@ function applyDisplayLockUI() {
   // Numerator section (算定項目/施設指標) is locked in ratio and trends modes:
   // those modes display A and B together, so editing either side via the
   // single sidebar would be ambiguous. Switch to 表示A/B to edit.
-  const numLock = curDisplayMode === 'ratio' || curDisplayMode === 'trends';
-  if (section) section.classList.toggle('disabled-section', numLock);
+  const isMulti = curDisplayMode === 'ratio' || curDisplayMode === 'trends';
+  // 分子(算定項目/施設指標)は常に編集可。比/年次推移モードでは表示A/表示Bで
+  // 編集対象を選び、各々の設定を調整できる。
+  if (section) section.classList.remove('disabled-section');
   // 分母 (表示値) is shared across all modes — only editable in 表示A mode.
-  // In 表示B / A・B比 / 年次推移, the denom inherits whatever 表示A is using.
+  // 比は分子同士の比のため分母は無関係。表示A以外では編集不可。
   const denomLock = curDisplayMode !== 'A';
   if (denomPanel) denomPanel.classList.toggle('disabled-section', denomLock);
   if (hint) {
-    hint.classList.toggle('visible', numLock);
-    if (curDisplayMode === 'ratio') {
-      hint.textContent = 'A・B比 モードでは A/B 各々の設定で参照されます';
-      hint.title = hint.textContent;
-    } else if (curDisplayMode === 'trends') {
-      hint.textContent = '年次推移 モードでは A/B 各々の設定で表示されます';
-      hint.title = hint.textContent;
+    hint.classList.toggle('visible', isMulti);
+    if (isMulti) {
+      const lbl = document.getElementById('reditLabel');
+      if (lbl) lbl.textContent = (curDisplayMode === 'ratio' ? 'A・B比' : '年次推移') + ' 編集対象:';
+      hint.querySelectorAll('.redit-btn').forEach(b => b.classList.toggle('active', b.dataset.edit === curEditTarget));
     }
   }
+}
+
+/* 比/年次推移モードで編集対象の設定(A/B)を切り替える(表示は維持) */
+function setRatioEditTarget(target) {
+  if (curDisplayMode !== 'ratio' && curDisplayMode !== 'trends') return;
+  if (curEditTarget === target) return;
+  saveCurrentConfig();                                  // 現在の編集を旧ターゲットへ保存
+  curEditTarget = target;
+  loadConfigToUI(target === 'A' ? configA : configB);   // 新ターゲットの設定をサイドバーへ
+  updateDenomNote();
+  updateConfigBadges();
+  applyDisplayLockUI();
+  scaleDomain = null;
+  updateMap(true);
 }
 /* Back-compat alias (older call sites may reference applyRatioLockUI) */
 const applyRatioLockUI = applyDisplayLockUI;
@@ -1196,7 +1222,7 @@ function updateConfigBadges() {
   if (!badge) return;
   if (curDisplayMode === 'ratio' || curDisplayMode === 'trends') {
     badge.style.display = '';
-    badge.textContent = curEditTarget === 'A' ? 'A設定 (参照)' : 'B設定 (参照)';
+    badge.textContent = curEditTarget === 'A' ? 'A設定 (編集中)' : 'B設定 (編集中)';
     badge.className = 'config-badge ' + (curEditTarget === 'A' ? 'badge-a' : 'badge-b');
   } else {
     badge.style.display = 'none';
