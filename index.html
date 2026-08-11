@@ -291,15 +291,17 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
 
 /* ================================================================ */
 /* 狭い画面 (タブレット・スマートフォン)                              */
-/*   860px 以下: サイドバーを地図に重ねるドロワーにする               */
+/*   700px 以下: サイドバーを地図に重ねるドロワーにする               */
 /*   560px 以下: さらに文字と余白を詰める                            */
-/*   境界の 860 は JS の NARROW_BP と一致させること                  */
+/*   境界の 700 は JS の NARROW_BP と一致させること。                 */
+/*   1512px ディスプレイの半画面(756px)はデスクトップ表示のままに     */
+/*   したいので、境界はそれより下に置く                              */
 /* ================================================================ */
 
 /* ドロワー表示中に地図側を覆う面。広い画面では常に非表示 */
 .sidebar-backdrop{display:none;position:absolute;inset:0;z-index:14;background:rgba(15,23,42,.35)}
 
-@media (max-width: 860px) {
+@media (max-width: 700px) {
   html{font-size:15px}
   /* モバイルのURLバーで 100vh がはみ出るため dvh を使う */
   body,#app{height:100dvh}
@@ -323,10 +325,15 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
   .resize-handle{display:none !important}
 
   .map-area{padding:6px}
-  .map-stats{top:6px;left:6px;right:6px;padding:10px 12px}
+  /* 統計は横いっぱいに伸ばさず、内容に合う幅で左上に置く
+     (幅いっぱいだと数値の間隔が開きすぎて間延びする) */
+  .map-stats{top:6px;left:6px;right:auto;
+             width:-moz-fit-content;width:fit-content;
+             max-width:min(420px, calc(100% - 12px));padding:10px 12px}
   .ms-val{font-size:17px}
   .ms-val-lg{font-size:19px}
-  .ms-row-spread{gap:10px}
+  /* 幅を絞るぶん、5列の行は折り返せるようにする */
+  .ms-row-spread{gap:6px 16px;flex-wrap:wrap}
   .ms-row{gap:12px;flex-wrap:wrap}
 
   /* 凡例コントロールは横に伸ばさず、画面幅に収める */
@@ -2206,6 +2213,20 @@ function updateLegend(cs, dom, isRatio) {
   const naX = bW/2 + 20;
   g.append('rect').attr('x', naX).attr('width', 14).attr('height', bH).attr('rx', 2).attr('fill', '#9ca3af');
   g.append('text').attr('x', naX+20).attr('y', bH-1).style('font-size','14px').attr('fill','var(--text-ll)').text('データなし');
+  // 凡例は中央寄せだが「データなし」がバーの右に付くぶん右へ長い。
+  // 地図の幅が狭いと切れるので、全体が収まるよう左右位置を補正する。
+  // 右端はズームボタン(幅34px + 右余白16px)のぶんを空けておく。
+  {
+    const tf = (g.attr('transform') || '').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+    if (tf) {
+      const ty = parseFloat(tf[2]), gb = g.node().getBBox();
+      const rightLimit = W - 46, leftLimit = 4;
+      let tx = W / 2;
+      if (tx + gb.x + gb.width > rightLimit) tx = rightLimit - gb.x - gb.width;
+      if (tx + gb.x < leftLimit) tx = leftLimit - gb.x;
+      g.attr('transform', `translate(${tx},${ty})`);
+    }
+  }
   const lc = document.getElementById('legendCtrl');
   g.style('cursor','pointer')
     .on('mouseenter', () => { clearTimeout(lcTimer); lc.classList.add('visible'); })
@@ -2219,7 +2240,7 @@ function positionStats() {
   /* fixed top-left via CSS; no dynamic repositioning needed */
 }
 
-/* 統計パネルの開閉。狭い画面では地図を覆ってしまうため既定でたたむ。
+/* 統計パネルの開閉。画面幅によらず既定は開いた状態。
    利用者が操作した結果は localStorage に残して次回も引き継ぐ。 */
 const MS_COLLAPSE_KEY = 'ndbmap.mapStats.collapsed';
 function setMapStatsCollapsed(collapsed) {
@@ -2243,8 +2264,8 @@ function toggleMapStats() {
 function initMapStatsCollapse() {
   let saved = null;
   try { saved = localStorage.getItem(MS_COLLAPSE_KEY); } catch (e) {}
-  // 保存値がなければ、狭い画面のみ初期状態でたたむ
-  setMapStatsCollapsed(saved !== null ? saved === '1' : isNarrowScreen());
+  // 保存値がなければ開いた状態で始める(狭い画面でも同じ)
+  setMapStatsCollapsed(saved === '1');
 }
 
 function updateStats(vals, isRatio) {
@@ -2596,8 +2617,9 @@ function downloadCSV() {
 /* SIDEBAR & RESIZE                                                  */
 /* ================================================================ */
 /* 狭い画面ではサイドバーを地図に重ねるドロワーとして扱う。
-   CSS の @media と同じ 860px を境界にする。 */
-const NARROW_BP = 860;
+   CSS の @media と同じ 700px を境界にする。
+   1512px ディスプレイの半画面(756px)は境界の上なのでデスクトップ表示のまま。 */
+const NARROW_BP = 700;
 function isNarrowScreen() { return window.innerWidth <= NARROW_BP; }
 
 function setSidebarCollapsed(collapsed) {
@@ -2623,11 +2645,12 @@ function closeSidebarDrawer() {
   resizeT = setTimeout(() => { initMap(); updateMap(false); }, 280);
 }
 
-/* 初回表示: 狭い画面ならサイドバーはたたんでおき、地図を主役にする */
+/* 初回表示: 画面幅によらずサイドバーは開いた状態で始める。
+   狭い画面ではドロワーとして地図に重なるので、背景の覆いも合わせて出す。 */
 let wasNarrow = null;
 function setupNarrowLayout() {
   wasNarrow = isNarrowScreen();
-  if (wasNarrow) setSidebarCollapsed(true);
+  setSidebarCollapsed(false);
   const bd = document.getElementById('sidebarBackdrop');
   if (bd) bd.addEventListener('click', closeSidebarDrawer);
 }
@@ -2637,12 +2660,9 @@ window.addEventListener('resize', () => {
   const narrow = isNarrowScreen();
   if (wasNarrow !== null && narrow !== wasNarrow) {
     const sb = document.querySelector('.sidebar');
-    if (narrow) {
-      sb.style.width = '';           // ドラッグで付いた固定幅を捨てる
-      setSidebarCollapsed(true);
-    } else {
-      setSidebarCollapsed(false);
-    }
+    if (narrow) sb.style.width = '';   // ドラッグで付いた固定幅を捨てる
+    // 開閉状態は保ったまま、背景の覆いだけ現在の幅に合わせ直す
+    setSidebarCollapsed(sb.classList.contains('collapsed'));
     wasNarrow = narrow;
   }
   clearTimeout(resizeT); resizeT = setTimeout(() => { initMap(); updateMap(false); }, 200);
