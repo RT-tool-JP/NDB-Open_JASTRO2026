@@ -22,13 +22,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans','No
 /* Layout */
 #app{display:flex;flex-direction:column;height:100vh}
 header{height:var(--hdr-h);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;flex-shrink:0;box-shadow:var(--shadow);z-index:10}
-header h1{font-size:19px;font-weight:600} header h1 b{color:var(--pri)}
-header .sub{margin-left:14px;font-size:15px;color:var(--text-ll)}
-.hdr-spacer{flex:1}
+/* 幅が足りないときはタイトルではなく副題を削る(タイトルが2行になると
+   ヘッダーの高さが崩れるため、h1 と表示モードは縮めない) */
+header h1{font-size:19px;font-weight:600;white-space:nowrap;flex-shrink:0} header h1 b{color:var(--pri)}
+header .sub{margin-left:14px;font-size:15px;color:var(--text-ll);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hdr-spacer{flex:1;min-width:0}
 .content{display:flex;flex:1;overflow:hidden}
 
 /* Display mode toggle (A / B / A/B比) */
-.disp-toggle{display:flex;gap:1px;background:var(--border-lt);border-radius:6px;padding:2px;margin-left:16px}
+.disp-toggle{display:flex;gap:1px;background:var(--border-lt);border-radius:6px;padding:2px;margin-left:16px;flex-shrink:0}
 .disp-btn{padding:4px 12px;border:none;border-radius:4px;background:transparent;color:var(--text-ll);font-size:16px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
 .disp-btn.active{background:var(--pri);color:#fff}
 .disp-btn.active-b{background:#d97706;color:#fff}
@@ -134,7 +136,14 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 
 /* Map stats overlay */
 .map-stats{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.93);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--rad);padding:14px 18px;box-shadow:var(--shadow);z-index:5;pointer-events:none;font-variant-numeric:tabular-nums}
-.ms-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+/* 見出し行だけクリックを受ける(パネル本体は地図操作を妨げないまま) */
+.ms-head{display:flex;align-items:center;gap:12px;pointer-events:auto}
+.ms-toggle{margin-left:auto;width:24px;height:24px;flex-shrink:0;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text-l);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ms-toggle:hover{background:var(--pri-lt);color:var(--pri);border-color:var(--pri)}
+.map-stats.collapsed{padding:8px 12px}
+.map-stats.collapsed .ms-body{display:none}
+.ms-body{margin-top:8px}
+.ms-title{font-size:17px;font-weight:700;color:var(--text)}
 .ms-row{display:flex;gap:22px;align-items:flex-start}
 .ms-row-spread{display:flex;justify-content:space-between;gap:28px}
 .ms-cell{min-width:0}
@@ -275,6 +284,72 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--pri);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-text{margin-top:10px;color:var(--text-ll);font-size:16px;text-align:center}
+
+/* ================================================================ */
+/* 狭い画面 (タブレット・スマートフォン)                              */
+/*   860px 以下: サイドバーを地図に重ねるドロワーにする               */
+/*   560px 以下: さらに文字と余白を詰める                            */
+/*   境界の 860 は JS の NARROW_BP と一致させること                  */
+/* ================================================================ */
+
+/* ドロワー表示中に地図側を覆う面。広い画面では常に非表示 */
+.sidebar-backdrop{display:none;position:absolute;inset:0;z-index:14;background:rgba(15,23,42,.35)}
+
+@media (max-width: 860px) {
+  html{font-size:15px}
+  /* モバイルのURLバーで 100vh がはみ出るため dvh を使う */
+  body,#app{height:100dvh}
+
+  header{padding:0 12px;gap:8px}
+  header h1{font-size:17px;white-space:nowrap}
+  header .sub{display:none}          /* 副題はタイトルと重複するので隠す */
+  .sidebar-toggle{margin-right:6px}
+  .disp-toggle{margin-left:0}
+  .disp-btn{padding:4px 9px;font-size:14px}
+
+  /* サイドバーは地図の上に重なるドラッグ不可のドロワー。
+     .sidebar に付く可能性のあるインライン幅より優先させる */
+  .content{position:relative}
+  .sidebar{position:absolute;top:0;bottom:0;left:0;z-index:15;
+           width:min(88vw,340px) !important;max-width:340px;
+           box-shadow:var(--shadow-lg);border-right:1px solid var(--border)}
+  .sidebar.collapsed{width:0 !important;border-right:none;box-shadow:none}
+  .sidebar-backdrop{display:none}
+  .sidebar-backdrop.visible{display:block}
+  .resize-handle{display:none !important}
+
+  .map-area{padding:6px}
+  .map-stats{top:6px;left:6px;right:6px;padding:10px 12px}
+  .ms-val{font-size:17px}
+  .ms-val-lg{font-size:19px}
+  .ms-row-spread{gap:10px}
+  .ms-row{gap:12px;flex-wrap:wrap}
+
+  /* 凡例コントロールは横に伸ばさず、画面幅に収める */
+  .legend-ctrl{left:6px;right:6px;bottom:64px;transform:none;padding:8px 10px}
+  .lc-row{flex-wrap:wrap;gap:6px}
+  .lc-input{width:64px}
+
+  /* 統計(上端)と凡例(下端)が横幅いっぱいになるため、
+     ズームボタンは右辺の中央へ逃がす */
+  .zoom-controls{top:50%;bottom:auto;right:6px;transform:translateY(-50%)}
+
+  .disclaimer-box{max-height:86dvh}
+}
+
+@media (max-width: 560px) {
+  html{font-size:14px}
+  header{padding:0 8px}
+  header h1{font-size:16px}
+  .disp-btn{padding:4px 7px;font-size:13px}
+  .map-area{padding:4px}
+  /* 統計は既定でたたまれる(JS)。開いたときも数値が折り返せるように */
+  .ms-row-spread{flex-wrap:wrap;gap:8px 14px}
+  .ms-cell{text-align:left !important}
+  /* 凡例の文字も詰める(目盛りの本数は updateLegend が幅から決める) */
+  .legend-title{font-size:16px}
+  .legend-axis text{font-size:15px}
+}
 </style>
 </head>
 <body>
@@ -412,6 +487,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
         注: NDB診療行為は10未満、処方薬数量は400未満の値が秘匿処理されています
       </div>
     </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
     <div class="resize-handle" id="resizeHandle"></div>
     <main class="map-area">
       <svg id="map-svg"></svg>
@@ -421,7 +497,11 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
         <button class="zoom-btn" id="zoomReset" title="リセット">&#8634;</button>
       </div>
       <div class="map-stats" id="mapStats" style="display:none">
-        <div class="ms-title" id="msTitle">統計</div>
+        <div class="ms-head">
+          <div class="ms-title" id="msTitle">統計</div>
+          <button class="ms-toggle" id="msToggle" onclick="toggleMapStats()" aria-expanded="true" title="統計をたたむ">&minus;</button>
+        </div>
+        <div class="ms-body" id="msBody">
         <div class="ms-row-spread">
           <div class="ms-cell"><div class="ms-lbl">全国合計</div><div><span class="ms-val ms-val-lg" id="sTotal">-</span><span class="ms-unit" id="sTotalUnit">回</span></div></div>
           <div class="ms-cell"><div class="ms-lbl">全国平均</div><div><span class="ms-val ms-val-lg" id="sAvg">-</span><span class="ms-unit" id="sAvgUnit"></span></div></div>
@@ -441,6 +521,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
           <div class="ms-cell"><div class="ms-lbl">変動係数</div><div class="ms-val" id="sCV">-</div></div>
           <div class="ms-cell"><div class="ms-lbl">欠損</div><div class="ms-val" id="sMissing">-</div></div>
           <div class="ms-cell"><div class="ms-lbl">欠損率</div><div class="ms-val" id="sMissRate">-</div></div>
+        </div>
         </div>
       </div>
       <div class="legend-ctrl" id="legendCtrl">
@@ -1208,9 +1289,9 @@ function applyDisplayLockUI() {
   // 分子(算定項目/施設指標)は常に編集可。比/年次推移モードでは表示A/表示Bで
   // 編集対象を選び、各々の設定を調整できる。
   if (section) section.classList.remove('disabled-section');
-  // 分母 (表示値) is shared across modes. Allow edits in 表示A and 年次推移.
-  const denomLock = curDisplayMode !== 'A' && curDisplayMode !== 'trends';
-  if (denomPanel) denomPanel.classList.toggle('disabled-section', denomLock);
+  // 分母(表示値)は表示A/B・A・B比・年次推移で共通の設定。どのモードでも
+  // 変更の意味が一意に決まるため、常に編集可とする(モードによる制限なし)。
+  if (denomPanel) denomPanel.classList.remove('disabled-section');
   if (hint) {
     hint.classList.toggle('visible', isMulti);
     if (isMulti) {
@@ -1341,6 +1422,9 @@ function buildFacilityList() {
 /* ================================================================ */
 const MX = lon => lon * Math.PI / 180;
 const MY = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+/* 沖縄インセット枠の右辺を置く経度。沖縄本島の東端は約128.4°E、
+   大東諸島は約131.3°E。本島寄りに枠を締めるため 129.6°E を既定とする。 */
+const INSET_FRAME_RIGHT_LON = 129.6;
 function toMercator(geo) {
   const out = JSON.parse(JSON.stringify(geo));
   out.features.forEach(f => {
@@ -1366,8 +1450,25 @@ function initMap() {
   const bbox = { type:'Feature', geometry:{ type:'Polygon', coordinates:[[
     [MX(129),MY(30.5)],[MX(146),MY(30.5)],[MX(146),MY(46)],[MX(129),MY(46)],[MX(129),MY(30.5)]
   ]]}};
+  if (!MGEO_PREF) MGEO_PREF = toMercator(GEO_PREF);
   const proj = d3.geoIdentity().reflectY(true).fitExtent([[20, 10], [W - 20, mapH - 10]], bbox);
   const path = d3.geoPath(proj);
+  // bbox(東経129〜146)の外へ出る地物があるため、幅の狭い画面では
+  // 北海道(北方領土まで含む)がクリップ域から切れる。切れる分だけ全体を縮める。
+  // 東京都の小笠原・南鳥島は常に枠外なので、この判定からは外す。
+  {
+    const fitF = MGEO_PREF.features.filter(f =>
+      f.properties.N03_001 !== '沖縄県' && f.properties.N03_001 !== '東京都');
+    const b = path.bounds({ type: 'FeatureCollection', features: fitF });
+    const cx = W / 2, avail = W / 2 - 6;
+    const half = Math.max(b[1][0] - cx, cx - b[0][0]);
+    if (half > avail) {
+      const k = Math.max(0.85, avail / half);   // 縮めすぎない
+      const t = proj.translate();
+      proj.scale(proj.scale() * k);
+      proj.translate([cx + (t[0] - cx) * k, (mapH / 2) + (t[1] - mapH / 2) * k]);
+    }
+  }
   const defs = svg.append('defs');
   defs.append('clipPath').attr('id', 'mc').append('rect').attr('width', W).attr('height', mapH);
 
@@ -1391,7 +1492,12 @@ function initMap() {
     const iX = (ap?ap[0]:65)-bxW/2, iY = (ap?ap[1]:14)-bxH/2;
     const dx = iX+iPd-ob[0][0], dy = iY+iPd-ob[0][1];
     const ig = mapContent.append('g');
-    ig.append('path').attr('d', `M${iX+bxW},${iY} V${iY+bxH} H${iX}`)
+    // 枠の右辺は外接矩形の右端(大東諸島まで含むため本島から大きく離れる)ではなく、
+    // INSET_FRAME_RIGHT_LON の経度に置いて沖縄本島に寄せる。
+    // 枠がつぶれないよう、左端から最低 bxW*0.45 は確保する。
+    const rp = proj([MX(INSET_FRAME_RIGHT_LON), MY(26.5)]);
+    const frameR = rp ? Math.max(iX + bxW*0.45, Math.min(iX + bxW, rp[0] + dx)) : iX + bxW;
+    ig.append('path').attr('d', `M${frameR},${iY} V${iY+bxH} H${iX}`)
       .attr('fill','none').attr('stroke','var(--border)').attr('stroke-width',1).attr('stroke-dasharray','3 2');
     const okig = ig.append('g').attr('transform', `translate(${dx},${dy})`);
     okig.selectAll('path').data(features).join('path')
@@ -2068,7 +2174,18 @@ function updateLegend(cs, dom, isRatio) {
   g.append('rect').attr('x',-bW/2).attr('width',bW).attr('height',bH).attr('rx',3).style('fill','url(#lg)');
   const sc = d3.scaleLinear().domain(dom).range([-bW/2,bW/2]);
   const tickFmt = isRatio ? (v => fmtR(v)) : fmt;
-  g.append('g').attr('class','legend-axis').attr('transform',`translate(0,${bH})`).call(d3.axisBottom(sc).ticks(5).tickFormat(tickFmt).tickSize(4));
+  // 目盛りの本数はバー幅とラベルの文字数から決める。
+  // d3 の ticks(n) は目安でしかなく n より多く返すため、多い場合は間引く。
+  // (狭い画面で "0 50100150200" のように重なるのを防ぐ)
+  const lblLen = Math.max(String(tickFmt(dom[0])).length, String(tickFmt(dom[1])).length);
+  const perTick = 10 + lblLen * 8;                       // ラベル1つ分のおおよその専有幅
+  const maxTicks = Math.max(2, Math.min(5, Math.floor(bW / perTick)));
+  let tickVals = sc.ticks(maxTicks);
+  while (tickVals.length > maxTicks && tickVals.length > 2) {
+    tickVals = tickVals.filter((_, i) => i % 2 === 0);
+  }
+  g.append('g').attr('class','legend-axis').attr('transform',`translate(0,${bH})`)
+    .call(d3.axisBottom(sc).tickValues(tickVals).tickFormat(tickFmt).tickSize(4));
   g.append('text').attr('class','legend-title').attr('y',-7).attr('text-anchor','middle').text(getLegendTitle());
   if (isRatio) {
     // Show 1.0 marker
@@ -2091,6 +2208,34 @@ function updateLegend(cs, dom, isRatio) {
 /* ================================================================ */
 function positionStats() {
   /* fixed top-left via CSS; no dynamic repositioning needed */
+}
+
+/* 統計パネルの開閉。狭い画面では地図を覆ってしまうため既定でたたむ。
+   利用者が操作した結果は localStorage に残して次回も引き継ぐ。 */
+const MS_COLLAPSE_KEY = 'ndbmap.mapStats.collapsed';
+function setMapStatsCollapsed(collapsed) {
+  const panel = document.getElementById('mapStats');
+  const btn = document.getElementById('msToggle');
+  if (!panel) return;
+  panel.classList.toggle('collapsed', collapsed);
+  if (btn) {
+    btn.innerHTML = collapsed ? '&plus;' : '&minus;';
+    btn.title = collapsed ? '統計をひらく' : '統計をたたむ';
+    btn.setAttribute('aria-expanded', String(!collapsed));
+  }
+}
+function toggleMapStats() {
+  const panel = document.getElementById('mapStats');
+  if (!panel) return;
+  const collapsed = !panel.classList.contains('collapsed');
+  setMapStatsCollapsed(collapsed);
+  try { localStorage.setItem(MS_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (e) {}
+}
+function initMapStatsCollapse() {
+  let saved = null;
+  try { saved = localStorage.getItem(MS_COLLAPSE_KEY); } catch (e) {}
+  // 保存値がなければ、狭い画面のみ初期状態でたたむ
+  setMapStatsCollapsed(saved !== null ? saved === '1' : isNarrowScreen());
 }
 
 function updateStats(vals, isRatio) {
@@ -2439,16 +2584,58 @@ function downloadCSV() {
 /* ================================================================ */
 /* SIDEBAR & RESIZE                                                  */
 /* ================================================================ */
-function toggleSidebar() {
+/* 狭い画面ではサイドバーを地図に重ねるドロワーとして扱う。
+   CSS の @media と同じ 860px を境界にする。 */
+const NARROW_BP = 860;
+function isNarrowScreen() { return window.innerWidth <= NARROW_BP; }
+
+function setSidebarCollapsed(collapsed) {
   const sb = document.querySelector('.sidebar'), rh = document.getElementById('resizeHandle');
   const btn = document.getElementById('sidebarToggle');
-  const collapsed = sb.classList.toggle('collapsed');
-  rh.style.display = collapsed ? 'none' : '';
-  btn.innerHTML = collapsed ? '&#9776;' : '&#9666;';
+  const bd = document.getElementById('sidebarBackdrop');
+  sb.classList.toggle('collapsed', collapsed);
+  if (rh) rh.style.display = collapsed ? 'none' : '';
+  if (btn) btn.innerHTML = collapsed ? '&#9776;' : '&#9666;';
+  // 背景の覆いはドロワー表示中(狭い画面で開いている間)だけ出す
+  if (bd) bd.classList.toggle('visible', !collapsed && isNarrowScreen());
+}
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  setSidebarCollapsed(!sb.classList.contains('collapsed'));
   clearTimeout(resizeT);
   resizeT = setTimeout(() => { initMap(); updateMap(false); }, 280);
 }
-window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { initMap(); updateMap(false); }, 200); });
+function closeSidebarDrawer() {
+  if (!isNarrowScreen()) return;
+  setSidebarCollapsed(true);
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { initMap(); updateMap(false); }, 280);
+}
+
+/* 初回表示: 狭い画面ならサイドバーはたたんでおき、地図を主役にする */
+let wasNarrow = null;
+function setupNarrowLayout() {
+  wasNarrow = isNarrowScreen();
+  if (wasNarrow) setSidebarCollapsed(true);
+  const bd = document.getElementById('sidebarBackdrop');
+  if (bd) bd.addEventListener('click', closeSidebarDrawer);
+}
+
+window.addEventListener('resize', () => {
+  // 幅の境界をまたいだときだけレイアウトの前提を作り直す
+  const narrow = isNarrowScreen();
+  if (wasNarrow !== null && narrow !== wasNarrow) {
+    const sb = document.querySelector('.sidebar');
+    if (narrow) {
+      sb.style.width = '';           // ドラッグで付いた固定幅を捨てる
+      setSidebarCollapsed(true);
+    } else {
+      setSidebarCollapsed(false);
+    }
+    wasNarrow = narrow;
+  }
+  clearTimeout(resizeT); resizeT = setTimeout(() => { initMap(); updateMap(false); }, 200);
+});
 function setupResize() {
   const handle = document.getElementById('resizeHandle');
   const sidebar = document.querySelector('.sidebar');
@@ -2533,6 +2720,7 @@ async function init() {
     GEO_PREF = await gr.json();
     DATA = await dr.json();
     reclassifyData(); buildLookup(); setupControls(); setupResize(); setupLegendCtrl();
+    setupNarrowLayout(); initMapStatsCollapse();
     applyRatioLockUI();
     initMap(); updateMap(true);
     document.getElementById('loading').classList.add('hidden');
