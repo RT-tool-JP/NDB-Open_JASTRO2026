@@ -140,8 +140,12 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;hei
 .ms-head{display:flex;align-items:center;gap:12px;pointer-events:auto}
 .ms-toggle{margin-left:auto;width:24px;height:24px;flex-shrink:0;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text-l);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .ms-toggle:hover{background:var(--pri-lt);color:var(--pri);border-color:var(--pri)}
-.map-stats.collapsed{padding:8px 12px}
+/* たたんだときは高さだけでなく横幅も縮め、左上の小さな見出しに収める。
+   狭い画面では .map-stats が left/right 指定で横いっぱいに広がるため、
+   right:auto で右への伸びを解除する(specificity が高いので media 内にも効く)。 */
+.map-stats.collapsed{padding:7px 11px;right:auto;width:-moz-fit-content;width:fit-content;max-width:calc(100% - 12px)}
 .map-stats.collapsed .ms-body{display:none}
+.map-stats.collapsed .ms-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ms-body{margin-top:8px}
 .ms-title{font-size:17px;font-weight:700;color:var(--text)}
 .ms-row{display:flex;gap:22px;align-items:flex-start}
@@ -498,7 +502,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       </div>
       <div class="map-stats" id="mapStats" style="display:none">
         <div class="ms-head">
-          <div class="ms-title" id="msTitle">統計</div>
+          <div class="ms-title" id="msTitle">統計情報</div>
           <button class="ms-toggle" id="msToggle" onclick="toggleMapStats()" aria-expanded="true" title="統計をたたむ">&minus;</button>
         </div>
         <div class="ms-body" id="msBody">
@@ -2173,7 +2177,12 @@ function updateLegend(cs, dom, isRatio) {
   for(let i=0;i<=20;i++){const t=i/20; grad.append('stop').attr('offset',`${t*100}%`).attr('stop-color',cs(dom[0]+t*(dom[1]-dom[0])));}
   g.append('rect').attr('x',-bW/2).attr('width',bW).attr('height',bH).attr('rx',3).style('fill','url(#lg)');
   const sc = d3.scaleLinear().domain(dom).range([-bW/2,bW/2]);
-  const tickFmt = isRatio ? (v => fmtR(v)) : fmt;
+  // 目盛りの小数桁は間隔から決める。整数固定だと「リニアック1台あたり」等の
+  // 0〜1.5 のような範囲で "0 0 1 1" と同じラベルが並んでしまう。
+  const roughStep = (dom[1] - dom[0]) / 5;
+  const dec = (!isFinite(roughStep) || roughStep >= 1) ? 0
+            : Math.min(3, Math.max(0, Math.ceil(-Math.log10(roughStep))));
+  const tickFmt = isRatio ? (v => fmtR(v)) : d3.format(',.' + dec + 'f');
   // 目盛りの本数はバー幅とラベルの文字数から決める。
   // d3 の ticks(n) は目安でしかなく n より多く返すため、多い場合は間引く。
   // (狭い画面で "0 50100150200" のように重なるのを防ぐ)
@@ -2244,7 +2253,9 @@ function updateStats(vals, isRatio) {
   panel.style.display = show ? '' : 'none';
   if (!show) return;
 
-  document.getElementById('msTitle').textContent = curDisplayMode === 'A' ? '統計 (A)' : curDisplayMode === 'B' ? '統計 (B)' : '統計';
+  // 見出しはヘッダーの表示モード切替(表示A/表示B/A・B比)と同じ言葉で揃える
+  document.getElementById('msTitle').textContent =
+    curDisplayMode === 'A' ? '統計情報（表示A）' : curDisplayMode === 'B' ? '統計情報（表示B）' : '統計情報';
 
   const cfg = curDisplayMode === 'B' ? configB : configA;
   const entries = Object.entries(vals);
@@ -2324,7 +2335,7 @@ function updateStatsRatio(rvals) {
   panel.style.display = show ? '' : 'none';
   if (!show) return;
 
-  document.getElementById('msTitle').textContent = '統計 (A/B比)';
+  document.getElementById('msTitle').textContent = '統計情報（A・B比）';
 
   const entries = Object.entries(rvals);
   const valid = entries.filter(([_,v]) => v.ratio !== null && isFinite(v.ratio));
