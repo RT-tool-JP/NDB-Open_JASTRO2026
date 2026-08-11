@@ -38,8 +38,10 @@ GitHub Pages 公開時はリポジトリの Settings → Pages で Source を `m
 NDB-Open_2026JASTRO/
 ├── index.html                  Web アプリ本体（D3.js v7、シングル HTML）
 ├── data/                       Web アプリ配信用データ
-│   ├── dashboard_data.json       全部入り JSON（scripts/10 が出力）
-│   └── prefectures.geojson       都道府県境界 GeoJSON
+│   ├── dashboard_data.json       全部入り JSON（scripts/10 + scripts/11 が出力）
+│   ├── prefectures.geojson       都道府県境界 GeoJSON
+│   ├── xofigo_drug_pref_counts.csv   ゾーフィゴ薬剤数量の都道府県別抽出結果
+│   └── xofigo_drug_sources.csv       ゾーフィゴ薬剤数量の出典・抽出ログ
 ├── scripts/                    R データパイプライン
 │   ├── 01_download_ndb_data.R          NDB Open Data ダウンロード
 │   ├── 02_download_facility_data.R     医療施設調査
@@ -47,7 +49,8 @@ NDB-Open_2026JASTRO/
 │   ├── 04_download_population_data.R   人口推計（総人口＋5歳階級別）
 │   ├── 05_download_geo_data.R          地理データ（都道府県 GeoJSON）
 │   ├── extract_ndb11_zip.py            第11回以降 ZIP からの xlsx 抽出（Shift-JIS 対応）
-│   └── 10_prepare_web_data.R           統合 JSON 生成
+│   ├── 10_prepare_web_data.R           統合 JSON 生成
+│   └── 11_add_xofigo_drug_counts.py    DL済み処方薬データからゾーフィゴをJSONへ追加
 ├── rawdata_dl/                 R が落とした生データ（gitignore）
 ├── _legacy/                    v1.00 退避（参照用、index.html 等）
 ├── docs/superpowers/           設計書・実装プラン
@@ -72,6 +75,12 @@ source("scripts/10_prepare_web_data.R")         # → data/dashboard_data.json
 
 ダウンロード済みファイルは skip ロジックにより再ダウンロード不要です。
 
+ゾーフィゴ静注は医科診療行為ではなく処方薬（注射・薬効分類別数量）のため、NDB 一括収集済みデータから追加抽出します。`10_prepare_web_data.R` 実行後に次を実行してください。
+
+```powershell
+python scripts\11_add_xofigo_drug_counts.py
+```
+
 ### 必要な R パッケージ
 
 | パッケージ | 用途 |
@@ -89,9 +98,11 @@ source("scripts/10_prepare_web_data.R")         # → data/dashboard_data.json
 install.packages(c("readxl","dplyr","tidyr","stringr","zoo","jsonlite","foreign","sf"))
 ```
 
-### Python（第11回以降のみ）
+### Python（ZIP抽出・ゾーフィゴ追加）
 
-第11回（FY2024）から NDB の医科診療行為（算定回数）が ZIP 一括配布に変更されました。ZIP 内のファイル名が Shift-JIS（cp932）で格納されており、UTF-8 ネイティブの R（Windows / R ≥ 4.2）の `unzip()` では正しく取り出せないため、`01_download_ndb_data.R` は標準ライブラリのみの Python ヘルパー `scripts/extract_ndb11_zip.py` を呼び出して 9 ファイル（3 指標 × 3 集計軸）を抽出します。Python 3 が PATH 上に必要です（追加パッケージ不要）。
+第11回（FY2024）から NDB の医科診療行為（算定回数）が ZIP 一括配布に変更されました。ZIP 内のファイル名が Shift-JIS（cp932）で格納されており、UTF-8 ネイティブの R（Windows / R ≥ 4.2）の `unzip()` では正しく取り出せないため、`01_download_ndb_data.R` は標準ライブラリのみの Python ヘルパー `scripts/extract_ndb11_zip.py` を呼び出して 9 ファイル（3 指標 × 3 集計軸）を抽出します。Python 3 が PATH 上に必要です。
+
+ゾーフィゴ抽出の `scripts/11_add_xofigo_drug_counts.py` は Excel 読み取りに `openpyxl` を使用します。
 
 ## データソース
 
@@ -111,6 +122,7 @@ install.packages(c("readxl","dplyr","tidyr","stringr","zoo","jsonlite","foreign"
 
 ## バージョン履歴
 
+- **v2.2** (2026-08-04): DL済み NDB 処方薬データからゾーフィゴ静注（医薬品コード `622489201`、薬価基準収載コード `4291432A1025`）の注射薬・都道府県別薬効分類別数量を追加。第10回・第11回は公費レセプトを含まない ZIP を使用。
 - **v2.1** (2026-06-25): NDB オープンデータ第11回（FY2024）に対応。人口推計 2024・医師統計 2024・医療施設動態調査 病院数 2024 を追加。第11回からの ZIP 一括配布形式に対応（`scripts/extract_ndb11_zip.py`）。年スライダーをデータ駆動化（範囲を `DATA.ndb.years` から自動導出）。
 - **v2.0** (2026-05-25): 試験版ベースに刷新。A/B 切替・A/B 比・年次推移モード、施設指標、分母 9 種を追加。
 - **v1.00** (2026-02-13): 初期リリース。NDB 算定回数の人口10万あたりマップ。

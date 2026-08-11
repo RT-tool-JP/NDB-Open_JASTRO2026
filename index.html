@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NDB Open Data - 都道府県別 算定回数マップ</title>
+<title>NDB Open Data - 都道府県別 算定回数・薬剤数量マップ</title>
 <link rel="icon" href="data:,">
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
@@ -287,11 +287,11 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       <button class="disclaimer-close" onclick="closeReshowDisclaimer()" title="閉じる" aria-label="閉じる">&times;</button>
     </div>
     <div class="disclaimer-body" id="disclaimerBody">
-      <p>本サイトは、以下の公的データを基に放射線治療に関する算定回数・医療資源を都道府県別に可視化する非公式の簡易解析ツールです。</p>
+      <p>本サイトは、以下の公的データを基に放射線治療に関する算定回数・薬剤数量・医療資源を都道府県別に可視化する非公式の簡易解析ツールです。</p>
       <h3>データ引用元</h3>
       <p><b>1. 厚生労働省「NDBオープンデータ」</b><br>
       <a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177182.html" target="_blank" rel="noopener">https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000177182.html</a><br>
-      レセプト情報・特定健診等情報データベース（NDB）より作成された集計表データ（第1回〜第11回、FY2014〜FY2024）を使用しています。</p>
+      レセプト情報・特定健診等情報データベース（NDB）より作成された集計表データ（第1回〜第11回、FY2014〜FY2024）を使用しています。医科診療行為（算定回数）に加え、処方薬（注射・薬効分類別数量）の一部項目を使用しています。</p>
       <p><b>2. 厚生労働省「医療施設調査」</b><br>
       <a href="https://www.e-stat.go.jp/stat-search/files?toukei=00450021" target="_blank" rel="noopener">https://www.e-stat.go.jp/stat-search/files?toukei=00450021</a><br>
       病院数（動態調査・各年〜2024年）、放射線治療設備（リニアック台数等）・従事者数（看護師・診療放射線技師）（静態調査: 2014, 2017, 2020, 2023年）のデータを使用しています。放射線治療設備・従事者数は<b>病院のみ</b>の集計であり、一般診療所（クリニック等）は含まれません。このため、これらを用いた指標・分母（リニアック1台あたり等）は病院分のみに基づく点にご留意ください。</p>
@@ -305,8 +305,8 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       <a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">https://nlftp.mlit.go.jp/ksj/</a><br>
       行政区域データ（N03、都道府県境界）を使用しています。</p>
       <h3>データの秘匿処理について</h3>
-      <p>NDBオープンデータでは「匿名医療保険等関連情報データベース（NDB）の提供に関するガイドライン」の最小集計単位の原則に基づき、都道府県別の算定回数が<b>10未満</b>の場合は値が秘匿（「-」表示）されています。</p>
-      <p>また、秘匿値が1箇所のみとなり合計値から逆算可能となる場合には、10以上の最小値も追加で秘匿される処理が施されています。このため、特定の診療行為・年度においては、多くの都道府県または全都道府県でデータが欠損する場合があります。</p>
+      <p>NDBオープンデータでは「匿名医療保険等関連情報データベース（NDB）の提供に関するガイドライン」の最小集計単位の原則に基づき、医科診療行為の都道府県別算定回数が<b>10未満</b>の場合は値が秘匿（「-」表示）されています。処方薬の薬効分類別数量では、集計結果が<b>400未満</b>の場合に値が秘匿されています。</p>
+      <p>また、秘匿値が1箇所のみとなり合計値から逆算可能となる場合には、閾値以上の最小値も追加で秘匿される処理が施されています。このため、特定の項目・年度においては、多くの都道府県または全都道府県でデータが欠損する場合があります。</p>
       <p>本サイトでは秘匿値を灰色（データなし）で表示しています。</p>
       <h3>免責事項</h3>
       <ul>
@@ -331,7 +331,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
   <header>
     <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="サイドバー切替">&#9666;</button>
     <h1><b>NDB</b> Open Data</h1>
-    <div class="sub">都道府県別 算定回数マップ <span style="margin-left:6px;font-size:10px;opacity:.6">v2.0 | 最終更新: 2026/05/25</span></div>
+    <div class="sub">都道府県別 算定回数・薬剤数量マップ <span style="margin-left:6px;font-size:10px;opacity:.6">v2.2 | 最終更新: 2026/08/04</span></div>
     <div class="hdr-spacer"></div>
     <div class="disp-toggle" id="dispToggle" title="表示モード切替">
       <button class="disp-btn active" data-disp="A" onclick="setDisplayMode('A')">表示A</button>
@@ -370,7 +370,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
             <span class="config-badge" id="tabBadge" style="display:none">A</span>
           </div>
           <div class="tab-group">
-            <button class="tab-btn active" data-mode="ndb" onclick="setDataMode('ndb')">NDB算定</button>
+            <button class="tab-btn active" data-mode="ndb" onclick="setDataMode('ndb')">NDB項目</button>
             <button class="tab-btn" data-mode="facility" onclick="setDataMode('facility')">施設指標</button>
           </div>
         </div>
@@ -409,7 +409,7 @@ body.disclaimer-reshow .disclaimer-footer{justify-content:flex-end}
       <div style="font-size:9px;color:var(--text-ll);line-height:1.6;padding:0 4px">
         データ: 厚生労働省 NDBオープンデータ / 医療施設調査 / 医師・歯科医師・薬剤師統計 / 総務省 人口推計<br>
         地図: 国土交通省 国土数値情報 (N03)<br>
-        注: NDB算定回数は10未満の値が秘匿処理されています
+        注: NDB診療行為は10未満、処方薬数量は400未満の値が秘匿処理されています
       </div>
     </aside>
     <div class="resize-handle" id="resizeHandle"></div>
@@ -877,11 +877,40 @@ function getDenomValue(code, year) {
   return { raw: m ? m.value : null, mul, year: m ? m.year : year };
 }
 
+function getNdbSelectionKind(ids) {
+  const selected = ids || [];
+  if (selected.length === 0) return 'procedure';
+  let hasDrug = false, hasProcedure = false;
+  selected.forEach(id => {
+    const info = PROC_LOOKUP[id];
+    if (info?.classCode === 'RX') hasDrug = true;
+    else hasProcedure = true;
+  });
+  if (hasDrug && !hasProcedure) return 'drug';
+  if (hasDrug && hasProcedure) return 'mixed';
+  return 'procedure';
+}
+function getNdbMeasureLabelForConfig(cfg) {
+  const kind = getNdbSelectionKind(cfg.selectedProcIds);
+  if (kind === 'drug') return '薬剤数量';
+  if (kind === 'mixed') return '算定回数/薬剤数量';
+  return '算定回数';
+}
+function getNdbUnitForConfig(cfg) {
+  const kind = getNdbSelectionKind(cfg.selectedProcIds);
+  if (kind === 'drug') return '回分';
+  if (kind === 'mixed') return '回/回分';
+  return '回';
+}
+function fmtNdbCount(v, cfg) {
+  if (v == null || !isFinite(v)) return '-';
+  return getNdbSelectionKind(cfg.selectedProcIds) === 'procedure' ? fmt(v) : d3.format(',.1f')(v);
+}
 function getNumUnit() {
-  return curDataMode === 'ndb' ? '回' : (facInfo(curFacIndicator)?.unit || '');
+  return curDataMode === 'ndb' ? getNdbUnitForConfig({ selectedProcIds: getSelectedProcIds() }) : (facInfo(curFacIndicator)?.unit || '');
 }
 function getNumUnitForConfig(cfg) {
-  return cfg.dataMode === 'ndb' ? '回' : (facInfo(cfg.facIndicator)?.unit || '');
+  return cfg.dataMode === 'ndb' ? getNdbUnitForConfig(cfg) : (facInfo(cfg.facIndicator)?.unit || '');
 }
 function getDisplayUnit() {
   const eff = getEffectiveDenom();
@@ -901,7 +930,10 @@ function getLegendTitle() {
   const eff = getEffectiveDenom();
   if (eff === 'scr') return 'SCR（100=全国平均）';
   const prefix = DENOM_LABELS[eff]?.legend || '';
-  if (cfg.dataMode === 'ndb') return prefix ? prefix + '算定回数' : '算定回数';
+  if (cfg.dataMode === 'ndb') {
+    const label = getNdbMeasureLabelForConfig(cfg);
+    return prefix ? prefix + label : label;
+  }
   const fi = facInfo(cfg.facIndicator);
   return prefix ? prefix + (fi?.name || '') : (fi?.name || '');
 }
@@ -1176,9 +1208,8 @@ function applyDisplayLockUI() {
   // 分子(算定項目/施設指標)は常に編集可。比/年次推移モードでは表示A/表示Bで
   // 編集対象を選び、各々の設定を調整できる。
   if (section) section.classList.remove('disabled-section');
-  // 分母 (表示値) is shared across all modes — only editable in 表示A mode.
-  // 比は分子同士の比のため分母は無関係。表示A以外では編集不可。
-  const denomLock = curDisplayMode !== 'A';
+  // 分母 (表示値) is shared across modes. Allow edits in 表示A and 年次推移.
+  const denomLock = curDisplayMode !== 'A' && curDisplayMode !== 'trends';
   if (denomPanel) denomPanel.classList.toggle('disabled-section', denomLock);
   if (hint) {
     hint.classList.toggle('visible', isMulti);
@@ -1517,7 +1548,7 @@ function updateYearSource(yr) {
   const addCfgRows = (cfg, prefix) => {
     const dy = detectDataYears(cfg, yr);
     const numHosp = cfg.dataMode === 'facility' && HOSPITAL_ONLY_INDICATORS.has(cfg.facIndicator);
-    const numLabel = prefix + (cfg.dataMode === 'ndb' ? 'NDB算定回数' : (facInfo(cfg.facIndicator)?.name || cfg.facIndicator));
+    const numLabel = prefix + (cfg.dataMode === 'ndb' ? 'NDB' + getNdbMeasureLabelForConfig(cfg) : (facInfo(cfg.facIndicator)?.name || cfg.facIndicator));
     if (dy.numYear !== yr || numHosp) {
       rows.push({ lbl: numLabel, year: dy.numYear, diff: dy.numYear !== yr, scope: numHosp ? '病院のみ' : '' });
     }
@@ -1609,26 +1640,67 @@ function updateMapRatio(yr, show, recomputeScale) {
 /* ================================================================ */
 /* TRENDS MODE                                                       */
 /* ================================================================ */
+function getNationalNdbTotalForConfig(cfg, yr) {
+  if (cfg.dataMode !== 'ndb' || !DATA.ndb.counts?.national) return null;
+  const ys = String(yr);
+  let total = 0, has = false;
+  cfg.selectedProcIds.forEach(code => {
+    const nv = DATA.ndb.counts.national[code]?.[ys];
+    if (nv != null && isFinite(nv)) { total += nv; has = true; }
+  });
+  return has ? total : null;
+}
+
+function aggregateTrendValueForConfig(cfg, yr, regionVals) {
+  const entries = Object.values(regionVals);
+  const withNum = entries.filter(v => v.num != null && isFinite(v.num));
+  const nationalTotal = getNationalNdbTotalForConfig(cfg, yr);
+  if (!withNum.length && nationalTotal == null) return null;
+
+  const eff = getEffectiveDenom();
+  const totalNum = withNum.reduce((s, v) => s + v.num, 0);
+  const effTotal = nationalTotal != null ? nationalTotal : totalNum;
+  if (eff === 'raw') return effTotal;
+
+  const withDenom = entries.filter(v => v.denomRaw != null && v.denomRaw > 0 && isFinite(v.denomRaw));
+  if (!withDenom.length) return null;
+
+  // For denominator-normalized trends, show the national weighted value.
+  // If NDB national totals are available, use them to include masked prefecture counts.
+  const denomTotal = (nationalTotal != null && eff !== 'scr')
+    ? withDenom.reduce((s, v) => s + v.denomRaw, 0)
+    : withDenom.filter(v => v.num != null && isFinite(v.num)).reduce((s, v) => s + v.denomRaw, 0);
+  const numerator = (nationalTotal != null && eff !== 'scr')
+    ? nationalTotal
+    : withDenom.filter(v => v.num != null && isFinite(v.num)).reduce((s, v) => s + v.num, 0);
+  return denomTotal > 0 ? numerator / denomTotal * getDenomMul() : null;
+}
+
 /* Aggregate one year for a given target ('A'|'B'|'ratio'):
-   - For A / B: arithmetic mean of dv across prefectures with values
+   - For A / B: national total in raw mode, national weighted value otherwise
    - For ratio: arithmetic mean of (aNum/bNum) where defined
+   - Gini/CV remain prefecture-level dispersion of displayed values
    Returns { value, gini, cv, n } or all-null if no values. */
 function trendsAggregateYear(target, yr) {
-  let vals;
+  let vals, value;
   if (target === 'A') {
     if (!hasDataForConfig(configA)) return { value: null, gini: null, cv: null, n: 0 };
-    vals = Object.values(calcValsForConfig(configA, yr)).map(v => v.dv).filter(v => v != null && isFinite(v));
+    const regionVals = calcValsForConfig(configA, yr);
+    vals = Object.values(regionVals).map(v => v.dv).filter(v => v != null && isFinite(v));
+    value = aggregateTrendValueForConfig(configA, yr, regionVals);
   } else if (target === 'B') {
     if (!hasDataForConfig(configB)) return { value: null, gini: null, cv: null, n: 0 };
-    vals = Object.values(calcValsForConfig(configB, yr)).map(v => v.dv).filter(v => v != null && isFinite(v));
+    const regionVals = calcValsForConfig(configB, yr);
+    vals = Object.values(regionVals).map(v => v.dv).filter(v => v != null && isFinite(v));
+    value = aggregateTrendValueForConfig(configB, yr, regionVals);
   } else {
     if (!hasDataForConfig(configA) || !hasDataForConfig(configB)) return { value: null, gini: null, cv: null, n: 0 };
     vals = Object.values(calcRatioVals(yr)).map(v => v.ratio).filter(v => v != null && isFinite(v));
+    value = d3.mean(vals);
   }
-  if (!vals.length) return { value: null, gini: null, cv: null, n: 0 };
-  const mean = d3.mean(vals);
+  if (!vals.length && value == null) return { value: null, gini: null, cv: null, n: 0 };
   const sorted = vals.slice().sort(d3.ascending);
-  return { value: mean, gini: calcGini(sorted), cv: calcCV(vals), n: vals.length };
+  return { value, gini: vals.length ? calcGini(sorted) : null, cv: vals.length ? calcCV(vals) : null, n: vals.length };
 }
 
 function renderTrends() {
@@ -1668,6 +1740,25 @@ function renderTrends() {
     const svg = div.append('svg');
     drawTrendChart(svg, s.data, checks, s);
   });
+}
+
+function interpolateTrendSeries(data, key) {
+  const out = data.map(d => ({ ...d }));
+  const valid = data
+    .map((d, i) => ({ i, year: d.year, value: d[key] }))
+    .filter(d => d.value != null && isFinite(d.value));
+  for (let k = 0; k < valid.length - 1; k++) {
+    const a = valid[k], b = valid[k + 1];
+    if (b.i - a.i <= 1) continue;
+    const span = b.year - a.year;
+    if (!span) continue;
+    for (let i = a.i + 1; i < b.i; i++) {
+      const ratio = (data[i].year - a.year) / span;
+      out[i][key] = a.value + (b.value - a.value) * ratio;
+      out[i][`${key}Interpolated`] = true;
+    }
+  }
+  return out;
 }
 
 function drawTrendChart(svg, data, opts, meta) {
@@ -1742,28 +1833,19 @@ function drawTrendChart(svg, data, opts, meta) {
   g.append('text').attr('class', 'trends-axis-lbl')
     .attr('x', iw + 4).attr('y', -6).attr('text-anchor', 'end').text('ジニ / CV');
 
-  // Line generators (skip null points)
-  const lineGen = yScale => d3.line()
-    .defined(d => d.value != null && isFinite(d.value))
+  // Line generators: interpolate gaps between observed years; dots remain observed only.
+  const lineGen = (yScale, key) => d3.line()
+    .defined(d => d[key] != null && isFinite(d[key]))
     .x(d => x(d.year))
-    .y(d => yScale(d.value));
-
-  const giniLine = d3.line()
-    .defined(d => d.gini != null && isFinite(d.gini))
-    .x(d => x(d.year))
-    .y(d => yRight(d.gini));
-
-  const cvLine = d3.line()
-    .defined(d => d.cv != null && isFinite(d.cv))
-    .x(d => x(d.year))
-    .y(d => yRight(d.cv));
+    .y(d => yScale(d[key]));
 
   // Value line
   if (opts.showVal) {
     const valData = data.map(d => ({ year: d.year, value: d.value }));
-    g.append('path').datum(valData)
+    const valLineData = interpolateTrendSeries(valData, 'value');
+    g.append('path').datum(valLineData)
       .attr('class', meta?.lineClass || 'trends-line-value')
-      .attr('d', lineGen(yLeft));
+      .attr('d', lineGen(yLeft, 'value'));
     g.selectAll('.trends-dot-value').data(valData.filter(d => d.value != null && isFinite(d.value)))
       .join('circle').attr('class', 'trends-dot trends-dot-value')
       .attr('cx', d => x(d.year)).attr('cy', d => yLeft(d.value)).attr('r', 3)
@@ -1771,7 +1853,8 @@ function drawTrendChart(svg, data, opts, meta) {
   }
   // Gini line
   if (opts.showGini) {
-    g.append('path').datum(data).attr('class', 'trends-line-gini').attr('d', giniLine);
+    const giniLineData = interpolateTrendSeries(data, 'gini');
+    g.append('path').datum(giniLineData).attr('class', 'trends-line-gini').attr('d', lineGen(yRight, 'gini'));
     g.selectAll('.trends-dot-gini').data(data.filter(d => d.gini != null && isFinite(d.gini)))
       .join('circle').attr('class', 'trends-dot trends-dot-gini')
       .attr('cx', d => x(d.year)).attr('cy', d => yRight(d.gini)).attr('r', 2.5)
@@ -1779,16 +1862,17 @@ function drawTrendChart(svg, data, opts, meta) {
   }
   // CV line
   if (opts.showCV) {
-    g.append('path').datum(data).attr('class', 'trends-line-cv').attr('d', cvLine);
+    const cvLineData = interpolateTrendSeries(data, 'cv');
+    g.append('path').datum(cvLineData).attr('class', 'trends-line-cv').attr('d', lineGen(yRight, 'cv'));
     g.selectAll('.trends-dot-cv').data(data.filter(d => d.cv != null && isFinite(d.cv)))
       .join('circle').attr('class', 'trends-dot trends-dot-cv')
       .attr('cx', d => x(d.year)).attr('cy', d => yRight(d.cv)).attr('r', 2.5)
       .attr('fill', '#16a34a');
   }
 
-  // Inline legend (top-right inside plot)
+  // Inline legend (top-right inside plot, inset from the right axis)
   const legend = g.append('g').attr('class', 'trends-legend')
-    .attr('transform', `translate(${iw - 4}, 4)`);
+    .attr('transform', `translate(${iw - 32}, 18)`);
   const items = [];
   if (opts.showVal) items.push({ lbl: '表示値', color: meta?.dotColor || 'var(--pri)', dash: null });
   if (opts.showGini) items.push({ lbl: 'ジニ', color: '#f59e0b', dash: '5,3' });
@@ -2021,6 +2105,7 @@ function updateStats(vals, isRatio) {
   const entries = Object.entries(vals);
   const valid = entries.filter(([_,v]) => v.num !== null);
   const totalNum = valid.reduce((s,[_,v]) => s + v.num, 0);  // 可視(欠損でない)都道府県値の合計
+  const allRegionMissing = entries.length > 0 && valid.length === 0;
 
   // 国の総計(NDBのみ・秘匿前の真の全国値): 選択診療行為コードの総計列を合算
   let nationalTotal = null;
@@ -2033,13 +2118,16 @@ function updateStats(vals, isRatio) {
     });
     if (has) nationalTotal = nt;
   }
-  const effTotal = (nationalTotal != null) ? nationalTotal : totalNum;  // 全国合計は総計(真の全国値)を優先
+  const effTotal = allRegionMissing && nationalTotal == null ? null
+    : (nationalTotal != null) ? nationalTotal : totalNum;  // 全国合計は総計(真の全国値)を優先
   // 欠損レコード率 = 1 − 可視都道府県値の合計 / 総計
   const missRate = (nationalTotal != null && nationalTotal > 0) ? Math.max(0, 1 - totalNum / nationalTotal) : null;
 
   const eff = getEffectiveDenom();
   let avg;
-  if (eff === 'raw') {
+  if (allRegionMissing) {
+    avg = null;
+  } else if (eff === 'raw') {
     avg = (nationalTotal != null) ? (entries.length > 0 ? effTotal / entries.length : 0)
                                   : (valid.length > 0 ? totalNum / valid.length : 0);
   } else if (nationalTotal != null) {
@@ -2050,7 +2138,7 @@ function updateStats(vals, isRatio) {
     const withDenom = valid.filter(([_,v]) => v.denomRaw != null && v.denomRaw > 0);
     const numWithDenom = withDenom.reduce((s,[_,v]) => s + v.num, 0);
     const totalDenom = withDenom.reduce((s,[_,v]) => s + v.denomRaw, 0);
-    avg = totalDenom > 0 ? numWithDenom / totalDenom * getDenomMul() : 0;
+    avg = totalDenom > 0 ? numWithDenom / totalDenom * getDenomMul() : null;
   }
 
   // 最小/最大/四分位・中央値は「値がある(欠損でない)都道府県」のみで算出
@@ -2068,8 +2156,8 @@ function updateStats(vals, isRatio) {
   // 欠損(秘匿/データなし)を含む都道府県数(複数選択時は一部項目のみ欠損も計上)
   const missingCount = entries.filter(([_,v]) => v.num === null || v.hasNA).length;
 
-  document.getElementById('sTotal').textContent = fmt(effTotal);
-  document.getElementById('sAvg').textContent = fmtD(avg);
+  document.getElementById('sTotal').textContent = cfg.dataMode === 'ndb' ? fmtNdbCount(effTotal, cfg) : (effTotal == null ? '-' : fmt(effTotal));
+  document.getElementById('sAvg').textContent = avg == null ? '-' : fmtD(avg);
   document.getElementById('sMax').textContent = fmtStat(maxV);
   document.getElementById('sMaxP').textContent = maxPr;
   document.getElementById('sMin').textContent = fmtStat(minV);
@@ -2182,14 +2270,14 @@ function buildTooltipForConfig(cfg, rc, yr, label) {
         if (ids.length > 3) {
           const na = g.items.some(i => i.count === null);
           const sum = g.items.reduce((s,i) => s + (i.count ?? 0), 0);
-          h += `<div class="tt-row"><span class="tt-lbl">${cc} ${g.name}</span><span class="tt-val">${na&&sum===0?'-':fmt(sum)}</span></div>`;
+          h += `<div class="tt-row"><span class="tt-lbl">${cc} ${g.name}</span><span class="tt-val">${na&&sum===0?'-':fmtNdbCount(sum, cfg)}</span></div>`;
         } else {
           g.items.forEach(i => {
-            h += `<div class="tt-row"><span class="tt-lbl">${i.name}</span><span class="tt-val">${i.count===null?'-':fmt(i.count)}</span></div>`;
+            h += `<div class="tt-row"><span class="tt-lbl">${i.name}</span><span class="tt-val">${i.count===null?'-':fmtNdbCount(i.count, cfg)}</span></div>`;
           });
         }
       });
-      if (ids.length > 1) h += `<div class="tt-row" style="border-top:1px solid var(--border-lt);padding-top:3px"><span class="tt-lbl">合計</span><span class="tt-val">${v.num===null?'-':fmt(v.num)}</span></div>`;
+      if (ids.length > 1) h += `<div class="tt-row" style="border-top:1px solid var(--border-lt);padding-top:3px"><span class="tt-lbl">合計</span><span class="tt-val">${v.num===null?'-':fmtNdbCount(v.num, cfg)}</span></div>`;
     }
   } else if (v) {
     const fi = facInfo(cfg.facIndicator);
@@ -2322,7 +2410,7 @@ function downloadCSV() {
 
   if (cfg.dataMode === 'ndb') {
     cfg.selectedProcIds.forEach(id => { const info = PROC_LOOKUP[id]; csv += `,${id}_${info?.procName||id}`; });
-    csv += `,合計算定回数`;
+    csv += `,合計${getNdbMeasureLabelForConfig(cfg)}`;
   } else {
     csv += `,${facInfo(cfg.facIndicator)?.name || cfg.facIndicator}`;
   }
