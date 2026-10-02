@@ -34,7 +34,14 @@ python -m http.server 8000
 # http://localhost:8000
 ```
 
-GitHub Pages 公開時はリポジトリの Settings → Pages で Source を `master` のルートに設定してください。
+## 公開先
+
+**https://rt-info.org/NDB-Open/**（2026-10-02 移転。Cloudflare Pages `rt-facility-map` の `/NDB-Open/`、認証なし）
+
+- 公開物は `master` の `index.html`・`LICENSE`・`data/` をそのまま配信モジュールの `site/NDB-Open/` に複製したもの。
+  更新したら複製し直して `rt-facility-map` を再デプロイする（手順は `_可視化アプリ/20260907_最適化配置_miyagi/DEPLOY.md`）。
+- 旧 URL `https://rt-tool-jp.github.io/NDB-Open_JASTRO2026/` は転送専用。GitHub Pages の Source は `gh-pages` ブランチのルートで、
+  `index.html`・`404.html`（同内容）が旧 URL のパス・クエリ・ハッシュを保って新 URL へ移す。`master` は Pages に使っていない。
 
 ## ディレクトリ構成
 
